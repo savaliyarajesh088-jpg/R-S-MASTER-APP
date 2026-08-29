@@ -94,13 +94,11 @@ if search_stock:
             st.markdown("---")
             st.subheader("🤖 Gemini AI સ્ટોક એનાલિસિસ રિપોર્ટ")
             
-            api_key = st.secrets.get("GEMINI_API_KEY", "")
-            if not api_key:
-                api_key = st.text_input("તમારી Gemini API Key નાખો:", type="password", key="ai_key")
+            user_api_key = st.text_input("તમારી Gemini API Key અહીં નાખો:", type="password", key="ai_key")
 
             if st.button("🚀 AI પાસે રિપોર્ટ મંગાવો"):
-                if not api_key:
-                    st.error("મહેરબાની કરીને Gemini API Key નાખો.")
+                if not user_api_key:
+                    st.error("મહેરબાની કરીને તમારી Gemini API Key નાખો.")
                 else:
                     with st.spinner("AI એનાલિસિસ કરી રહ્યું છે..."):
                         try:
@@ -116,7 +114,7 @@ if search_stock:
                             3. મુખ્ય ધ્યાન રાખવા લાયક બાબત.
                             """
                             
-                            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
+                            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={user_api_key}"
                             payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
                             response = requests.post(url, json=payload, headers={'Content-Type': 'application/json'})
                             res_json = response.json()
@@ -125,9 +123,10 @@ if search_stock:
                                 st.success("એનાલિસિસ પૂર્ણ થયું!")
                                 st.write(res_json['candidates'][0]['content']['parts'][0]['text'])
                             else:
-                                st.error("એપીઆઈ કી અથવા સર્વરમાં પ્રોબ્લેમ છે.")
+                                err_msg = res_json.get('error', {}).get('message', 'અજ્ઞાત એરર')
+                                st.error(f"એપીઆઈ એરર: {err_msg}")
                         except Exception as e:
-                            st.error(f"એરર: {e}")
+                            st.error(f"કનેક્શન એરર: {e}")
 
             # --- PRICE & SIGNAL BOARD ---
             st.markdown("---")
