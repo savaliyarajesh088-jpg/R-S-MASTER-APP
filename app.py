@@ -1,6 +1,6 @@
 import streamlit as st
 import yfinance as yf
-import requests
+import google.generativeai as genai
 
 # Page Configuration
 st.set_page_config(page_title="R S MASTER APP", page_icon="📈")
@@ -33,7 +33,7 @@ if st.button("Analyse Stock"):
                 if hist.empty or hist['Close'].dropna().empty:
                     st.error("આ સિમ્બોલ માટે કોઈ ડેટા મળ્યો નથી. કૃપા કરીને સાચો સિમ્બોલ નાખો (ઉદા. TATASTEEL.NS).")
                 else:
-                    # Current Stock Details (Safe extraction to avoid 'nan')
+                    # Current Stock Details
                     close_series = hist['Close'].dropna()
                     current_price = close_series.iloc[-1]
                     high_price = hist['High'].max()
@@ -65,38 +65,17 @@ if st.button("Analyse Stock"):
                     3. રોકાણકારો માટે મહત્વની ટિપ્સ અને રિસ્ક ફેક્ટર્સ
                     """
 
-                    # Stable Gemini Model
-                    models_to_try = [
-                        "gemini-1.5-flash",
-                        "gemini-1.5-pro"
-                    ]
-                    
-                    success = False
-                    
-                    for model_name in models_to_try:
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-                        payload = {
-                            "contents": [
-                                {
-                                    "parts": [{"text": prompt_text}]
-                                }
-                            ]
-                        }
-                        headers = {'Content-Type': 'application/json'}
-                        
-                        response = requests.post(url, json=payload, headers=headers)
-                        res_json = response.json()
+                    # Configure and call official Gemini API
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = model.generate_content(prompt_text)
 
-                        if response.status_code == 200 and 'candidates' in res_json:
-                            analysis_text = res_json['candidates'][0]['content']['parts'][0]['text']
-                            st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
-                            st.subheader(f"📊 {company_name} રિપોર્ટ:")
-                            st.write(analysis_text)
-                            success = True
-                            break
-
-                    if not success:
-                        st.error(f"API એરર: {response.status_code} - કૃપા કરીને તમારી API Key ચકાસો.")
+                    if response and response.text:
+                        st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
+                        st.subheader(f"📊 {company_name} રિપોર્ટ:")
+                        st.write(response.text)
+                    else:
+                        st.error("એનાલિસિસ જનરેટ કરવામાં સમસ્યા આવી.")
 
             except Exception as e:
                 st.error(f"એરર આવી છે: {str(e)}")
