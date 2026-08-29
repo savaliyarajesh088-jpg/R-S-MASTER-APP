@@ -40,7 +40,9 @@ if st.button("Analyse Stock"):
 
                     # Configure Gemini API
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-2.0-flash')
+                    
+                    # Using recommended gemini-3.6-flash model
+                    model = genai.GenerativeModel('gemini-3.6-flash')
 
                     prompt = f"""
                     તમે એક એક્સપર્ટ સ્ટોક માર્કેટ એનાલિસ્ટ છો.
