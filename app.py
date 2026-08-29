@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import requests
 from datetime import datetime
 
 # Page Configuration & Mobile Responsive Layout
@@ -49,13 +50,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("📈 R S MASTER APP")
-st.caption("સંપૂર્ણ ગુજરાતી એક્ઝિટમંત્રા અને એડવાન્સ્ડ પોર્ટફોલિયો ટ્રેકર")
+st.caption("સંપૂર્ણ ગુજરાતી એક્ઝિટમંત્રા, પોર્ટફોલિયો અને AI એનાલિસિસ ટ્રેકર")
 
 # Session State Initializations
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = [
         "RELIANCE.NS", "TATAMOTORS.NS", "TCS.NS", "INFY.NS", 
-        "HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS", "BHARTIARTL.NS"
+        "HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS", "BHARTIARTL.NS", "RATNAVEER.NS"
     ]
 
 if 'portfolio' not in st.session_state:
@@ -64,8 +65,8 @@ if 'portfolio' not in st.session_state:
 if 'signal_history' not in st.session_state:
     st.session_state.signal_history = {}
 
-# --- SECTION 1: WATCHLIST & PORTFOLIO CONTROL (EXPANDABLE FOR MOBILE) ---
-with st.expander("⚙️ વોચલિસ્ટ અને પોર્ટફોલિયો કંટ્રોલ (અહીં ક્લિક કરો)", expanded=False):
+# --- SECTION 1: WATCHLIST & PORTFOLIO CONTROL ---
+with st.expander("⚙️ વોચલિસ્ટ અને પોર્ટફોલિયો કંટ્રોલ (ક્લિક કરો)", expanded=False):
     col_w, col_p = st.columns([1, 1])
     
     with col_w:
@@ -175,7 +176,7 @@ st.markdown("---")
 
 # --- SECTION 4: SEARCH & TECHNICAL ANALYSIS ---
 st.subheader("🔍 સ્ટોક શોધો અને ટેકનિકલ એનાલિસિસ કરો")
-search_stock = st.text_input("NSE સ્ટોક સિમ્બોલ લખો (દા.ત. ADANIENT.NS, WIPRO.NS):", value="RELIANCE.NS")
+search_stock = st.text_input("NSE સ્ટોક સિમ્બોલ લખો (દા.ત. ADANIENT.NS, RATNAVEER.NS):", value="RATNAVEER.NS")
 
 if search_stock:
     selected_stock = search_stock.upper().strip()
@@ -207,11 +208,6 @@ if search_stock:
         df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
         df['EMA_100'] = df['Close'].ewm(span=100, adjust=False).mean()
         df['EMA_200'] = df['Close'].ewm(span=200, adjust=False).mean()
-
-        exp1 = df['Close'].ewm(span=12, adjust=False).mean()
-        exp2 = df['Close'].ewm(span=26, adjust=False).mean()
-        df['MACD'] = exp1 - exp2
-        df['Signal_Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
 
         # CPR
         prev_high = float(df['High'].iloc[-2])
@@ -272,17 +268,17 @@ if search_stock:
                 "zone": zone, "zone_date": today_str, "sl": stop_loss, "sl_date": today_str
             }
         else:
-            hist = st.session_state.signal_history[selected_stock]
-            if hist["signal"] != signal:
-                hist["signal"] = signal
-                hist["signal_date"] = today_str
-                hist["signal_price"] = current_price
-            if hist["zone"] != zone:
-                hist["zone"] = zone
-                hist["zone_date"] = today_str
-            if hist["sl"] != stop_loss:
-                hist["sl"] = stop_loss
-                hist["sl_date"] = today_str
+            hist_state = st.session_state.signal_history[selected_stock]
+            if hist_state["signal"] != signal:
+                hist_state["signal"] = signal
+                hist_state["signal_date"] = today_str
+                hist_state["signal_price"] = current_price
+            if hist_state["zone"] != zone:
+                hist_state["zone"] = zone
+                hist_state["zone_date"] = today_str
+            if hist_state["sl"] != stop_loss:
+                hist_state["sl"] = stop_loss
+                hist_state["sl_date"] = today_str
 
         stock_hist = st.session_state.signal_history[selected_stock]
         sig_price = stock_hist["signal_price"]
@@ -322,61 +318,115 @@ if search_stock:
         </div>
         """, unsafe_allow_html=True)
 
-        # SECTION 6: MOBILE TABS FOR DETAILED ANALYSIS
-        tab1, tab2, tab3 = st.tabs(["🎯 ટાર્ગેટ અને ટ્રેન્ડ", "📊 EMA & CPR", "📉 લાઈવ ચાર્ટ્સ"])
+        # SECTION 6: SWING TARGETS & DWM TREND
+        st.markdown("---")
+        st.subheader("🎯 સ્વિંગ ટ્રેડ ટાર્ગેટ (૬% થી ૧૫%)")
+        c1, c2 = st.columns(2)
+        c1.metric("🛑 મૂળ સ્ટોપ લોસ (SL)", f"₹{stop_loss:.2f}")
+        c2.metric("🎯 ટાર્ગેટ ૧ (૬%)", f"₹{target_6pct:.2f}")
+        
+        c3, c4 = st.columns(2)
+        c3.metric("🎯 ટાર્ગેટ ૨ (૧૦%)", f"₹{target_10pct:.2f}")
+        c4.metric("🚀 ટાર્ગેટ ૩ (૧૫%)", f"₹{target_15pct:.2f}")
 
-        with tab1:
-            st.markdown("#### 🎯 સ્વિંગ ટ્રેડ ટાર્ગેટ (૬% થી ૧૫%)")
-            c1, c2 = st.columns(2)
-            c1.metric("🛑 મૂળ સ્ટોપ લોસ (SL)", f"₹{stop_loss:.2f}")
-            c2.metric("🎯 ટાર્ગેટ ૧ (૬%)", f"₹{target_6pct:.2f}")
-            
-            c3, c4 = st.columns(2)
-            c3.metric("🎯 ટાર્ગેટ ૨ (૧૦%)", f"₹{target_10pct:.2f}")
-            c4.metric("🚀 ટાર્ગેટ ૩ (૧૫%)", f"₹{target_15pct:.2f}")
+        st.markdown("---")
+        st.subheader("🗓️ DWM (ડેઇલી, વીકલી, મંથલી) ટ્રેન્ડ સ્ટેટસ")
+        d_col, w_col, m_col = st.columns(3)
 
-            st.markdown("---")
-            st.markdown("#### 🗓️ DWM (ડેઇલી, વીકલી, મંથલી) ટ્રેન્ડ સ્ટેટસ")
-            d_col, w_col, m_col = st.columns(3)
+        d_trend = "તેજી 🟢" if current_price > float(df['EMA_50'].iloc[-1]) else "મંદી 🔴"
+        w_trend = "તેજી 🟢" if float(df_weekly['Close'].iloc[-1]) > float(df_weekly['Close'].iloc[-4]) else "મંદી 🔴"
+        m_trend = "તેજી 🟢" if float(df_monthly['Close'].iloc[-1]) > float(df_monthly['Close'].iloc[-2]) else "મંદી 🔴"
 
-            d_trend = "તેજી 🟢" if current_price > float(df['EMA_50'].iloc[-1]) else "મંદી 🔴"
-            w_trend = "તેજી 🟢" if float(df_weekly['Close'].iloc[-1]) > float(df_weekly['Close'].iloc[-4]) else "મંદી 🔴"
-            m_trend = "તેજી 🟢" if float(df_monthly['Close'].iloc[-1]) > float(df_monthly['Close'].iloc[-2]) else "મંદી 🔴"
+        d_col.metric("📅 ડેઇલી ટ્રેન્ડ", d_trend)
+        w_col.metric("🗓️ વીકલી ટ્રેન્ડ", w_trend)
+        m_col.metric("📊 મંથલી ટ્રેન્ડ", m_trend)
 
-            d_col.metric("📅 ડેઇલી ટ્રેન્ડ", d_trend)
-            w_col.metric("🗓️ વીકલી ટ્રેન્ડ", w_trend)
-            m_col.metric("📊 મંથલી ટ્રેન્ડ", m_trend)
+        # SECTION 7: EMA & CPR INDICATORS
+        st.markdown("---")
+        st.subheader("📊 ટેકનિકલ ઈન્ડિકેટર્સ (EMA) અને CPR")
+        
+        ema_data = pd.DataFrame({
+            "Moving Average": ["EMA 10", "EMA 20", "EMA 50", "EMA 100", "EMA 200"],
+            "કિંમત (₹)": [
+                f"₹{df['EMA_10'].iloc[-1]:.2f}",
+                f"₹{df['EMA_20'].iloc[-1]:.2f}",
+                f"₹{df['EMA_50'].iloc[-1]:.2f}",
+                f"₹{df['EMA_100'].iloc[-1]:.2f}",
+                f"₹{df['EMA_200'].iloc[-1]:.2f}"
+            ]
+        })
+        st.dataframe(ema_data, hide_index=True, use_container_width=True)
 
-        with tab2:
-            st.markdown("#### 📊 ટેકનિકલ ઈન્ડિકેટર્સ (EMA)")
-            ema_data = pd.DataFrame({
-                "Moving Average": ["EMA 10", "EMA 20", "EMA 50", "EMA 100", "EMA 200"],
-                "કિંમત (₹)": [
-                    f"₹{df['EMA_10'].iloc[-1]:.2f}",
-                    f"₹{df['EMA_20'].iloc[-1]:.2f}",
-                    f"₹{df['EMA_50'].iloc[-1]:.2f}",
-                    f"₹{df['EMA_100'].iloc[-1]:.2f}",
-                    f"₹{df['EMA_200'].iloc[-1]:.2f}"
-                ]
-            })
-            st.dataframe(ema_data, hide_index=True, use_container_width=True)
+        st.markdown("#### 🎯 દૈનિક CPR (Central Pivot Range)")
+        cpr_data = pd.DataFrame({
+            "CPR લેવલ": ["Top Central (TC)", "Pivot Point (P)", "Bottom Central (BC)"],
+            "કિંમત (₹)": [f"₹{max(tc, bc):.2f}", f"₹{pivot:.2f}", f"₹{min(tc, bc):.2f}"]
+        })
+        st.dataframe(cpr_data, hide_index=True, use_container_width=True)
 
-            st.markdown("#### 🎯 દૈનિક CPR (Central Pivot Range)")
-            cpr_data = pd.DataFrame({
-                "CPR લેવલ": ["Top Central (TC)", "Pivot Point (P)", "Bottom Central (BC)"],
-                "કિંમત (₹)": [f"₹{max(tc, bc):.2f}", f"₹{pivot:.2f}", f"₹{min(tc, bc):.2f}"]
-            })
-            st.dataframe(cpr_data, hide_index=True, use_container_width=True)
+        # SECTION 8: PRICE CHART
+        st.markdown("---")
+        st.subheader("📉 પ્રાઈસ ચાર્ટ અને EMA લાઈનો")
+        st.line_chart(df[['Close', 'EMA_10', 'EMA_20', 'EMA_50', 'EMA_100', 'EMA_200']])
 
-        with tab3:
-            st.markdown("#### 📉 પ્રાઈસ ચાર્ટ અને EMA લાઈનો")
-            st.line_chart(df[['Close', 'EMA_10', 'EMA_20', 'EMA_50', 'EMA_100', 'EMA_200']])
+        # SECTION 9: GEMINI AI STOCK ANALYSIS REPORT (From your old code)
+        st.markdown("---")
+        st.subheader("🤖 Gemini AI સ્ટોક એનાલિસિસ રિપોર્ટ")
+        
+        api_key = st.secrets.get("GEMINI_API_KEY", "")
+        if not api_key:
+            api_key = st.text_input("તમારી Gemini API Key નાખો:", type="password", key="gemini_key_input")
 
-            st.markdown("#### 📊 MACD ઈન્ડિકેટર")
-            st.line_chart(df[['MACD', 'Signal_Line']])
+        if st.button("🤖 Gemini AI પાસે રિપોર્ટ મંગાવો"):
+            if not api_key:
+                st.error("મહેરબાની કરીને સાચી Gemini API Key પ્રદાન કરો.")
+            else:
+                with st.spinner("AI એનાલિસિસ કરી રહ્યું છે..."):
+                    try:
+                        ticker_obj = yf.Ticker(selected_stock)
+                        info = ticker_obj.info
+                        company_name = info.get('longName', selected_stock)
+                        high_1m = float(df['High'].max())
+                        low_1m = float(df['Low'].min())
 
-            st.markdown("#### 📊 વોલ્યુમ ચાર્ટ (Volume)")
-            st.bar_chart(df['Volume'])
+                        prompt_text = f"""
+                        તમે એક એક્સપર્ટ સ્ટોક માર્કેટ એનાલિસ્ટ છો.
+                        નીચે આપેલા સ્ટોક ડેટાનું વિશ્લેષણ કરો અને ગુજરાતી ભાષામાં વિગતવાર રિપોર્ટ આપો:
+
+                        સ્ટોકનું નામ: {company_name} ({selected_stock})
+                        હાલનો ભાવ (Current Price): ₹{current_price:.2f}
+                        છેલ્લા ૧ મહિનાનો હાઈ (1 Month High): ₹{high_1m:.2f}
+                        છેલ્લા ૧ મહિનાનો લો (1 Month Low): ₹{low_1m:.2f}
+                        ટેકનિકલ સ્કોર (Exitmantra Score): {score}/3 ({signal})
+
+                        મહેરબાની કરીને નીચે મુજબ જવાબો આપો:
+                        1. સ્ટોકનું સામાન્ય વિશ્લેષણ (General Analysis)
+                        2. હાલના ભાવ અને ટ્રેન્ડ પ્રમાણે શોર્ટ ટર્મ દ્રષ્ટિકોણ (Short-term Outlook)
+                        3. રોકાણકારો માટે મહત્વની ટિપ્સ અને રિસ્ક ફેક્ટર્સ
+                        """
+
+                        models_to_try = ["gemini-3.6-flash", "gemini-1.5-flash-latest"]
+                        success = False
+
+                        for model_name in models_to_try:
+                            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+                            payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
+                            headers = {'Content-Type': 'application/json'}
+                            
+                            response = requests.post(url, json=payload, headers=headers)
+                            res_json = response.json()
+
+                            if response.status_code == 200 and 'candidates' in res_json:
+                                analysis_text = res_json['candidates'][0]['content']['parts'][0]['text']
+                                st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
+                                st.write(analysis_text)
+                                success = True
+                                break
+
+                        if not success:
+                            st.error("સર્વર પર અત્યારે વધુ ટ્રાફિક છે. થોડી સેકન્ડ પછી ફરી પ્રયાસ કરો.")
+                    except Exception as e:
+                        st.error(f"એરર આવી છે: {str(e)}")
 
 st.markdown("---")
-st.caption("Powered by R S MASTER APP | સંપૂર્ણ ગુજરાતી પોર્ટફોલિયો અને એડવાન્સ્ડ હિસ્ટ્રી ટ્રેકર")
+st.caption("Powered by R S MASTER APP | સંપૂર્ણ ગુજરાતી પોર્ટફોલિયો અને AI એનાલિસિસ ટ્રેકર")
