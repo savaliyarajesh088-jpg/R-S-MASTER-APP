@@ -1,48 +1,74 @@
 import streamlit as st
 import yfinance as yf
-from anthropic import Anthropic
+import anthropic
 
-st.set_page_config(page_title="AI Stock Analyst", page_icon="📈", layout="centered")
-
-# Hide Streamlit header & footer for native app look
-st.markdown("""<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}</style>""", unsafe_allow_html=True)
+# Page Configuration
+st.set_page_config(page_title="R S MASTER APP", page_icon="📈")
 
 st.title("📈 AI Stock Analyst")
+st.write("ભારતીય સ્ટોક માર્કેટ એનાલિસિસ")
 
-ticker = st.text_input("સ્ટોક સિમ્બોલ લખો (જેમ કે TATASTEEL.NS, RELIANCE.NS):", "TATASTEEL.NS")
-api_key = st.text_input("તમારી Claude API Key નાખો:", type="password")
+# Get API Key from Streamlit Secrets or User Input
+api_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+
+if not api_key:
+    api_key = st.text_input("તમારી Claude API Key નાખો:", type="password")
+
+symbol = st.text_input("સ્ટોક સિમ્બોલ લખો (જેમ કે TATASTEEL.NS, RELIANCE.NS):", value="TATASTEEL.NS")
 
 if st.button("Analyse Stock"):
     if not api_key:
-        st.error("મહેરબાની કરીને તમારી Claude API Key લખો.")
+        st.error("મહેરબાની કરીને સાચી Claude API Key પ્રદાન કરો.")
+    elif not symbol:
+        st.error("મહેરબાની કરીને સ્ટોક સિમ્બોલ લખો.")
     else:
-        with st.spinner('ડેટા ફેચ થઈ રહ્યો છે...'):
-            stock = yf.Ticker(ticker)
-            hist = stock.history(period="1mo")
-            info = stock.info
-            
-            st.subheader(f"{ticker} ચાર્ટ")
-            st.line_chart(hist['Close'])
-            
-            prompt_data = f"""
-            Stock: {ticker}
-            P/E Ratio: {info.get('trailingPE', 'N/A')}
-            52 Week High: {info.get('fiftyTwoWeekHigh', 'N/A')}
-            52 Week Low: {info.get('fiftyTwoWeekLow', 'N/A')}
-            Recent Prices: {hist['Close'].tail(5).to_dict()}
-            
-            કૃપા કરીને ગુજરાતીમાં 3 પોઈન્ટ્સમાં એનાલિસિસ આપો:
-            1. ફંડામેન્ટલ સ્થિતિ
-            2. ટ્રેન્ડ
-            3. રિસ્ક ફેક્ટર
-            """
+        with st.spinner("ડેટા ફેચ થઈ રહ્યો છે અને એનાલિસિસ ચાલુ છે..."):
+            try:
+                # Fetch stock data using yfinance
+                ticker = yf.Ticker(symbol)
+                hist = ticker.history(period="1mo")
+                info = ticker.info
 
-            client = Anthropic(api_key=api_key)
-            response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=400,
-                messages=[{"role": "user", "content": prompt_data}]
-            )
-            
-            st.subheader("💡 AI એનાલિસિસ રિપોર્ટ:")
-            st.write(response.content[0].text)
+                if hist.empty:
+                    st.error("આ સિમ્બોલ માટે કોઈ ડેટા મળ્યો નથી. કૃપા કરીને સાચો સિમ્બોલ નાખો (ઉદા. TATASTEEL.NS).")
+                else:
+                    # Current Stock Details
+                    current_price = hist['Close'].iloc[-1]
+                    high_price = hist['High'].max()
+                    low_price = hist['Low'].min()
+                    company_name = info.get('longName', symbol)
+
+                    # Initialize Anthropic Client
+                    client = anthropic.Anthropic(api_key=api_key)
+
+                    prompt = f"""
+                    તમે એક એક્સપર્ટ સ્ટોક માર્કેટ એનાલિસ્ટ છો.
+                    નીચે આપેલા સ્ટોક ડેટાનું વિશ્લેષણ કરો અને ગુજરાતી ભાષામાં વિગતવાર રિપોર્ટ આપો:
+
+                    સ્ટોકનું નામ: {company_name} ({symbol})
+                    હાલનો ભાવ (Current Price): ₹{current_price:.2f}
+                    છેલ્લા 1 મહિનાનો હાઈ (1 Month High): ₹{high_price:.2f}
+                    છેલ્લા 1 મહિનાનો લો (1 Month Low): ₹{low_price:.2f}
+
+                    મહેરબાની કરીને નીચે મુજબ જવાબો આપો:
+                    1. સ્ટોકનું સામાન્ય વિશ્લેષણ (General Analysis)
+                    2. હાલના ભાવ પ્રમાણે શોર્ટ ટર્મ દ્રષ્ટિકોણ (Short-term Outlook)
+                    3. રોકાણકારો માટે મહત્વની ટિપ્સ અને રિસ્ક ફેક્ટર્સ
+                    """
+
+                    # Calling Claude API with standard fast model
+                    response = client.messages.create(
+                        model="claude-3-haiku-20240307",
+                        max_tokens=1000,
+                        messages=[
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+
+                    # Display Output
+                    st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
+                    st.subheader(f"📊 {company_name} રિપોર્ટ:")
+                    st.write(response.content[0].text)
+
+            except Exception as e:
+                st.error(f"એરર આવી છે: {str(e)}")
