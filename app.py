@@ -5,7 +5,8 @@ import google.generativeai as genai
 # Page Configuration
 st.set_page_config(page_title="R S MASTER APP", page_icon="📈")
 
-st.title("📈 AI Stock Analyst (Free Gemini)")
+# અહી નવું નામ આપેલ છે
+st.title("📈 R.S STOCK MASTER")
 st.write("ભારતીય સ્ટોક માર્કેટ એનાલિસિસ")
 
 # Get API Key from Streamlit Secrets or User Input
