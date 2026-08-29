@@ -30,17 +30,18 @@ if st.button("Analyse Stock"):
                 hist = ticker.history(period="1mo")
                 info = ticker.info
 
-                if hist.empty:
+                if hist.empty or hist['Close'].dropna().empty:
                     st.error("આ સિમ્બોલ માટે કોઈ ડેટા મળ્યો નથી. કૃપા કરીને સાચો સિમ્બોલ નાખો (ઉદા. TATASTEEL.NS).")
                 else:
-                    # Current Stock Details
-                    current_price = hist['Close'].iloc[-1]
+                    # Current Stock Details (Safe extraction to avoid 'nan')
+                    close_series = hist['Close'].dropna()
+                    current_price = close_series.iloc[-1]
                     high_price = hist['High'].max()
                     low_price = hist['Low'].min()
                     company_name = info.get('longName', symbol)
                     pe_ratio = info.get('trailingPE', 'N/A')
 
-                    # Display Clean Metrics (No Charts)
+                    # Display Clean Metrics
                     col1, col2, col3 = st.columns(3)
                     col1.metric("હાલનો ભાવ", f"₹{current_price:.2f}")
                     col2.metric("૧ મહિનાનો હાઈ", f"₹{high_price:.2f}")
@@ -64,10 +65,10 @@ if st.button("Analyse Stock"):
                     3. રોકાણકારો માટે મહત્વની ટિપ્સ અને રિસ્ક ફેક્ટર્સ
                     """
 
-                    # Stable Models
+                    # Stable Gemini Model
                     models_to_try = [
-                        "gemini-2.5-flash",
-                        "gemini-1.5-flash"
+                        "gemini-1.5-flash",
+                        "gemini-1.5-pro"
                     ]
                     
                     success = False
@@ -95,7 +96,7 @@ if st.button("Analyse Stock"):
                             break
 
                     if not success:
-                        st.error("સર્વર પર અત્યારે વધુ ટ્રાફિક છે. કૃપા કરીને થોડી સેકન્ડ પછી ફરી 'Analyse Stock' બટન પર દબાવો.")
+                        st.error(f"API એરર: {response.status_code} - કૃપા કરીને તમારી API Key ચકાસો.")
 
             except Exception as e:
                 st.error(f"એરર આવી છે: {str(e)}")
