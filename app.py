@@ -1,91 +1,145 @@
 import streamlit as st
 import yfinance as yf
-import requests
+import pandas as pd
+import numpy as np
 
-# Page Configuration
-st.set_page_config(page_title="R S MASTER APP", page_icon="📈")
+# Page Config
+st.set_page_config(page_title="R S MASTER APP - Breakout & Swing", layout="wide", page_icon="📈")
 
-# App Title
-st.title("📈 R S MASTER APP")
-st.write("ભારતીય સ્ટોક માર્કેટ એનાલિસિસ")
+# Custom UI Styling
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .exit-card {
+        background-color: #1e2430;
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #2d3748;
+        margin-bottom: 20px;
+    }
+    .badge-add { background-color: #10B981; color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; }
+    .badge-hold { background-color: #3B82F6; color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; }
+    .badge-replace { background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; }
+    .badge-exit { background-color: #EF4444; color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; }
+    .breakout-badge { background-color: #8B5CF6; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; }
+    </style>
+""", unsafe_allow_html=True)
 
-# Get API Key from Streamlit Secrets or User Input
-api_key = st.secrets.get("GEMINI_API_KEY", "")
+st.title("📈 R S MASTER APP - Swing Breakout & ExitMantra")
 
-if not api_key:
-    api_key = st.text_input("તમારી Gemini API Key નાખો:", type="password")
+# Default Watchlist
+if 'watchlist' not in st.session_state:
+    st.session_state.watchlist = [
+        "RELIANCE.NS", "TATAMOTORS.NS", "TCS.NS", "INFY.NS", 
+        "HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS", "BHARTIARTL.NS"
+    ]
 
-symbol = st.text_input("સ્ટોક સિમ્બોલ લખો (જેમ કે TATASTEEL.NS, RELIANCE.NS):", value="TATASTEEL.NS")
+# Sidebar Manager
+st.sidebar.header("⚙️ Watchlist Manager")
+new_stock = st.sidebar.text_input("Add Stock Ticker (e.g. WIPRO.NS):")
+if st.sidebar.button("➕ Add Stock"):
+    if new_stock and new_stock.upper() not in st.session_state.watchlist:
+        st.session_state.watchlist.append(new_stock.upper())
+        st.sidebar.success(f"{new_stock.upper()} Added!")
+        st.rerun()
 
-if st.button("Analyse Stock"):
-    if not api_key:
-        st.error("મહેરબાની કરીને સાચી Gemini API Key પ્રદાન કરો.")
-    elif not symbol:
-        st.error("મહેરબાની કરીને સ્ટોક સિમ્બોલ લખો.")
-    else:
-        with st.spinner("ડેટા ફેચ થઈ રહ્યો છે અને એનાલિસિસ ચાલુ છે..."):
-            try:
-                # Fetch stock data using yfinance
-                ticker = yf.Ticker(symbol)
-                hist = ticker.history(period="1mo")
-                info = ticker.info
+stock_to_remove = st.sidebar.selectbox("Remove Stock:", st.session_state.watchlist)
+if st.sidebar.button("🗑️ Delete Stock"):
+    if stock_to_remove in st.session_state.watchlist:
+        st.session_state.watchlist.remove(stock_to_remove)
+        st.sidebar.warning(f"{stock_to_remove} Removed!")
+        st.rerun()
 
-                if hist.empty:
-                    st.error("આ સિમ્બોલ માટે કોઈ ડેટા મળ્યો નથી. કૃપા કરીને સાચો સિમ્બોલ નાખો (ઉદા. TATASTEEL.NS).")
-                else:
-                    # Current Stock Details
-                    current_price = hist['Close'].iloc[-1]
-                    high_price = hist['High'].max()
-                    low_price = hist['Low'].min()
-                    company_name = info.get('longName', symbol)
+selected_stock = st.selectbox("🎯 Select Stock for Breakout & Swing Analysis:", st.session_state.watchlist)
 
-                    prompt_text = f"""
-                    તમે એક એક્સપર્ટ સ્ટોક માર્કેટ એનાલિસ્ટ છો.
-                    નીચે આપેલા સ્ટોક ડેટાનું વિશ્લેષણ કરો અને ગુજરાતી ભાષામાં વિગતવાર રિપોર્ટ આપો:
+if selected_stock:
+    df = yf.download(selected_stock, period="1y", interval="1d", progress=False)
+    
+    if not df.empty:
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
 
-                    સ્ટોકનું નામ: {company_name} ({symbol})
-                    હાલનો ભાવ (Current Price): ₹{current_price:.2f}
-                    છેલ્લા 1 મહિનાનો હાઈ (1 Month High): ₹{high_price:.2f}
-                    છેલ્લા 1 મહિનાનો લો (1 Month Low): ₹{low_price:.2f}
+        current_price = float(df['Close'].iloc[-1])
+        prev_close = float(df['Close'].iloc[-2])
+        high_20 = float(df['High'].iloc[-21:-1].max()) # 20 Days High
+        high_52 = float(df['High'].max())               # 52 Week High
+        
+        # Moving Averages & Volume
+        ema_20 = float(df['Close'].ewm(span=20, adjust=False).mean().iloc[-1])
+        ema_50 = float(df['Close'].ewm(span=50, adjust=False).mean().iloc[-1])
+        vol_avg_20 = float(df['Volume'].iloc[-21:-1].mean())
+        curr_vol = float(df['Volume'].iloc[-1])
 
-                    મહેરબાની કરીને નીચે મુજબ જવાબો આપો:
-                    1. સ્ટોકનું સામાન્ય વિશ્લેષણ (General Analysis)
-                    2. હાલના ભાવ પ્રમાણે શોર્ટ ટર્મ દ્રષ્ટિકોણ (Short-term Outlook)
-                    3. રોકાણકારો માટે મહત્વની ટિપ્સ અને રિસ્ક ફેક્ટર્સ
-                    """
+        # --- Breakout & Momentum Logic ---
+        is_breakout_20d = current_price > high_20
+        is_vol_breakout = curr_vol > vol_avg_20
+        is_near_52w_high = (current_price / high_52) >= 0.95
 
-                    # Try primary and secondary models if high demand occurs
-                    models_to_try = [
-                        "gemini-3.6-flash",
-                        "gemini-1.5-flash-latest"
-                    ]
-                    
-                    success = False
-                    
-                    for model_name in models_to_try:
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-                        payload = {
-                            "contents": [
-                                {
-                                    "parts": [{"text": prompt_text}]
-                                }
-                            ]
-                        }
-                        headers = {'Content-Type': 'application/json'}
-                        
-                        response = requests.post(url, json=payload, headers=headers)
-                        res_json = response.json()
+        # Swing Targets (6% to 15%)
+        target_6pct = current_price * 1.06
+        target_10pct = current_price * 1.10
+        target_15pct = current_price * 1.15
+        stop_loss = round(min(ema_20, current_price * 0.95), 2) # 5% SL or EMA20 Support
 
-                        if response.status_code == 200 and 'candidates' in res_json:
-                            analysis_text = res_json['candidates'][0]['content']['parts'][0]['text']
-                            st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
-                            st.subheader(f"📊 {company_name} રિપોર્ટ:")
-                            st.write(analysis_text)
-                            success = True
-                            break
+        # --- ExitMantra 3 Pillars Logic ---
+        pillar1_breakout = True if (is_breakout_20d or is_near_52w_high) else False
+        pillar2_momentum = True if (current_price > ema_50 and is_vol_breakout) else False
+        pillar3_exitprice = True if (current_price > stop_loss) else False
 
-                    if not success:
-                        st.error("સર્વર પર અત્યારે વધુ ટ્રાફિક છે. કૃપા કરીને થોડી સેકન્ડ પછી ફરી 'Analyse Stock' બટન પર દબાવો.")
+        score = sum([pillar1_breakout, pillar2_momentum, pillar3_exitprice])
 
-            except Exception as e:
-                st.error(f"એરર આવી છે: {str(e)}")
+        # Signal & Rating Setup
+        if score == 3:
+            zone = "Bull Zone"
+            signal = "ADD (STRONG BUY)"
+            badge_class = "badge-add"
+        elif score == 2:
+            zone = "Bull Zone"
+            signal = "HOLD / WATCH"
+            badge_class = "badge-hold"
+        elif score == 1:
+            zone = "Pig Zone"
+            signal = "REPLACE"
+            badge_class = "badge-replace"
+        else:
+            zone = "Bear Zone"
+            signal = "EXIT / AVOID"
+            badge_class = "badge-exit"
+
+        # --- DISPLAY BREAKOUT & EXITMANTRA CARD ---
+        st.markdown("---")
+        
+        # Breakout Banner
+        if is_breakout_20d and is_vol_breakout:
+            st.success("🔥 **STRONG BREAKOUT DETECTED!** Price crossed 20-day High with High Volume.")
+        elif is_breakout_20d:
+            st.info("⚡ **PRICE BREAKOUT:** Price crossed 20-day High level.")
+
+        st.markdown(f"""
+        <div class="exit-card">
+            <h2>{selected_stock.replace('.NS', '')} 
+                {'<span class="breakout-badge">🚀 BREAKOUT</span>' if is_breakout_20d else ''}
+            </h2>
+            <h3>Current Price: ₹{current_price:.2f} | Stop Loss (SL): ₹{stop_loss:.2f}</h3>
+            <p><b>ZONE:</b> {zone} | <b>SCORE:</b> {score} / 3 | <b>RATING:</b> <span class="{badge_class}">{signal}</span></p>
+            <hr style="border-color:#374151;">
+            <p>{'✅' if pillar1_breakout else '❌'} <b>Breakout / ATH Strength:</b> {'Yes (Breakout / Near High)' if pillar1_breakout else 'No'}</p>
+            <p>{'✅' if pillar2_momentum else '❌'} <b>Outperformance & Volume Momentum:</b> {'Yes (Volume Surge & Above EMA50)' if pillar2_momentum else 'No'}</p>
+            <p>{'✅' if pillar3_exitprice else '❌'} <b>Above Exit Price (Technicals):</b> {'Yes (Above Support Level)' if pillar3_exitprice else 'No'}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # --- SWING TARGETS DISPLAY BOARD ---
+        st.subheader("🎯 Swing Trade Targets (6% to 15%)")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🛑 Stop Loss (5%)", f"₹{stop_loss:.2f}")
+        c2.metric("🎯 Target 1 (6%)", f"₹{target_6pct:.2f}")
+        c3.metric("🎯 Target 2 (10%)", f"₹{target_10pct:.2f}")
+        c4.metric("🚀 Target 3 (15%)", f"₹{target_15pct:.2f}")
+
+        # Charts
+        st.markdown("### 📊 Price & Volume Chart")
+        st.line_chart(df[['Close']])
+
+st.markdown("---")
+st.caption("Powered by R S MASTER APP | Swing Breakout & ExitMantra Engine")
