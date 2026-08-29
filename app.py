@@ -65,9 +65,9 @@ if st.button("Analyse Stock"):
                     3. રોકાણકારો માટે મહત્વની ટિપ્સ અને રિસ્ક ફેક્ટર્સ
                     """
 
-                    # Configure and call official Gemini API
+                    # Configure and call official Gemini API with supported model
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    model = genai.GenerativeModel('gemini-2.5-flash')
                     response = model.generate_content(prompt_text)
 
                     if response and response.text:
