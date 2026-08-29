@@ -38,6 +38,15 @@ if st.button("Analyse Stock"):
                     high_price = hist['High'].max()
                     low_price = hist['Low'].min()
                     company_name = info.get('longName', symbol)
+                    pe_ratio = info.get('trailingPE', 'N/A')
+
+                    # Display Clean Metrics (No Charts)
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("હાલનો ભાવ", f"₹{current_price:.2f}")
+                    col2.metric("૧ મહિનાનો હાઈ", f"₹{high_price:.2f}")
+                    col3.metric("૧ મહિનાનો લો", f"₹{low_price:.2f}")
+
+                    st.markdown("---")
 
                     prompt_text = f"""
                     તમે એક એક્સપર્ટ સ્ટોક માર્કેટ એનાલિસ્ટ છો.
@@ -47,6 +56,7 @@ if st.button("Analyse Stock"):
                     હાલનો ભાવ (Current Price): ₹{current_price:.2f}
                     છેલ્લા 1 મહિનાનો હાઈ (1 Month High): ₹{high_price:.2f}
                     છેલ્લા 1 મહિનાનો લો (1 Month Low): ₹{low_price:.2f}
+                    P/E રેશિયો: {pe_ratio}
 
                     મહેરબાની કરીને નીચે મુજબ જવાબો આપો:
                     1. સ્ટોકનું સામાન્ય વિશ્લેષણ (General Analysis)
@@ -54,10 +64,10 @@ if st.button("Analyse Stock"):
                     3. રોકાણકારો માટે મહત્વની ટિપ્સ અને રિસ્ક ફેક્ટર્સ
                     """
 
-                    # Dynamic Fallback Models for smooth execution
+                    # Stable Models
                     models_to_try = [
-                        "gemini-3.6-flash",
-                        "gemini-1.5-flash-latest"
+                        "gemini-2.5-flash",
+                        "gemini-1.5-flash"
                     ]
                     
                     success = False
