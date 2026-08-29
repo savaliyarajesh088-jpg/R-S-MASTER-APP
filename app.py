@@ -1,6 +1,6 @@
 import streamlit as st
 import yfinance as yf
-import google.generativeai as genai
+import requests
 
 # Page Configuration
 st.set_page_config(page_title="R S MASTER APP", page_icon="📈")
@@ -39,13 +39,7 @@ if st.button("Analyse Stock"):
                     low_price = hist['Low'].min()
                     company_name = info.get('longName', symbol)
 
-                    # Configure Gemini API
-                    genai.configure(api_key=api_key)
-                    
-                    # 404 એરર સોલ્વ કરવા પૂરું મોડલ નેમ 'models/gemini-1.5-flash' આપ્યું છે
-                    model = genai.GenerativeModel('models/gemini-1.5-flash')
-
-                    prompt = f"""
+                    prompt_text = f"""
                     તમે એક એક્સપર્ટ સ્ટોક માર્કેટ એનાલિસ્ટ છો.
                     નીચે આપેલા સ્ટોક ડેટાનું વિશ્લેષણ કરો અને ગુજરાતી ભાષામાં વિગતવાર રિપોર્ટ આપો:
 
@@ -60,13 +54,28 @@ if st.button("Analyse Stock"):
                     3. રોકાણકારો માટે મહત્વની ટિપ્સ અને રિસ્ક ફેક્ટર્સ
                     """
 
-                    # Generate response
-                    response = model.generate_content(prompt)
+                    # Direct API Call to bypass SDK version issues
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+                    payload = {
+                        "contents": [
+                            {
+                                "parts": [{"text": prompt_text}]
+                            }
+                        ]
+                    }
+                    headers = {'Content-Type': 'application/json'}
+                    
+                    response = requests.post(url, json=payload, headers=headers)
+                    res_json = response.json()
 
-                    # Display Output
-                    st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
-                    st.subheader(f"📊 {company_name} રિપોર્ટ:")
-                    st.write(response.text)
+                    if response.status_code == 200 and 'candidates' in res_json:
+                        analysis_text = res_json['candidates'][0]['content']['parts'][0]['text']
+                        st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
+                        st.subheader(f"📊 {company_name} રિપોર્ટ:")
+                        st.write(analysis_text)
+                    else:
+                        error_msg = res_json.get('error', {}).get('message', 'અજ્ઞાત એરર')
+                        st.error(f"Gemini API એરર: {error_msg}")
 
             except Exception as e:
                 st.error(f"એરર આવી છે: {str(e)}")
