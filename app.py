@@ -1,24 +1,24 @@
 import streamlit as st
 import yfinance as yf
-import anthropic
+import google.generativeai as genai
 
 # Page Configuration
 st.set_page_config(page_title="R S MASTER APP", page_icon="📈")
 
-st.title("📈 AI Stock Analyst")
+st.title("📈 AI Stock Analyst (Free Gemini)")
 st.write("ભારતીય સ્ટોક માર્કેટ એનાલિસિસ")
 
 # Get API Key from Streamlit Secrets or User Input
-api_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+api_key = st.secrets.get("GEMINI_API_KEY", "")
 
 if not api_key:
-    api_key = st.text_input("તમારી Claude API Key નાખો:", type="password")
+    api_key = st.text_input("તમારી Gemini API Key નાખો:", type="password")
 
 symbol = st.text_input("સ્ટોક સિમ્બોલ લખો (જેમ કે TATASTEEL.NS, RELIANCE.NS):", value="TATASTEEL.NS")
 
 if st.button("Analyse Stock"):
     if not api_key:
-        st.error("મહેરબાની કરીને સાચી Claude API Key પ્રદાન કરો.")
+        st.error("મહેરબાની કરીને સાચી Gemini API Key પ્રદાન કરો.")
     elif not symbol:
         st.error("મહેરબાની કરીને સ્ટોક સિમ્બોલ લખો.")
     else:
@@ -38,8 +38,9 @@ if st.button("Analyse Stock"):
                     low_price = hist['Low'].min()
                     company_name = info.get('longName', symbol)
 
-                    # Initialize Anthropic Client
-                    client = anthropic.Anthropic(api_key=api_key)
+                    # Configure Gemini API
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel('gemini-1.5-flash')
 
                     prompt = f"""
                     તમે એક એક્સપર્ટ સ્ટોક માર્કેટ એનાલિસ્ટ છો.
@@ -56,19 +57,13 @@ if st.button("Analyse Stock"):
                     3. રોકાણકારો માટે મહત્વની ટિપ્સ અને રિસ્ક ફેક્ટર્સ
                     """
 
-                    # Calling Claude API with standard fast model
-                    response = client.messages.create(
-                        model="claude-3-haiku-20240307",
-                        max_tokens=1000,
-                        messages=[
-                            {"role": "user", "content": prompt}
-                        ]
-                    )
+                    # Generate response
+                    response = model.generate_content(prompt)
 
                     # Display Output
                     st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
                     st.subheader(f"📊 {company_name} રિપોર્ટ:")
-                    st.write(response.content[0].text)
+                    st.write(response.text)
 
             except Exception as e:
                 st.error(f"એરર આવી છે: {str(e)}")
