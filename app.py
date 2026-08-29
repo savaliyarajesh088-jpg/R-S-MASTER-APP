@@ -2,11 +2,11 @@ import streamlit as st
 import yfinance as yf
 import google.generativeai as genai
 
-# Page Configuration
+# Page Configuration - બ્રાઉઝર ટેબ માટે નામ
 st.set_page_config(page_title="R S MASTER APP", page_icon="📈")
 
-# અહી નવું નામ આપેલ છે
-st.title("📈 R.S STOCK MASTER")
+# એપનું મુખ્ય ટાઈટલ
+st.title("📈 R S MASTER APP")
 st.write("ભારતીય સ્ટોક માર્કેટ એનાલિસિસ")
 
 # Get API Key from Streamlit Secrets or User Input
@@ -42,8 +42,8 @@ if st.button("Analyse Stock"):
                     # Configure Gemini API
                     genai.configure(api_key=api_key)
                     
-                    # Using recommended gemini-3.6-flash model
-                    model = genai.GenerativeModel('gemini-3.6-flash')
+                    # Using standard gemini-1.5-flash model
+                    model = genai.GenerativeModel('gemini-1.5-flash')
 
                     prompt = f"""
                     તમે એક એક્સપર્ટ સ્ટોક માર્કેટ એનાલિસ્ટ છો.
