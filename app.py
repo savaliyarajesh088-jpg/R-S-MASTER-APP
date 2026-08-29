@@ -54,28 +54,38 @@ if st.button("Analyse Stock"):
                     3. રોકાણકારો માટે મહત્વની ટિપ્સ અને રિસ્ક ફેક્ટર્સ
                     """
 
-                    # Updated API Model Endpoint to gemini-3.6-flash
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
-                    payload = {
-                        "contents": [
-                            {
-                                "parts": [{"text": prompt_text}]
-                            }
-                        ]
-                    }
-                    headers = {'Content-Type': 'application/json'}
+                    # Try primary and secondary models if high demand occurs
+                    models_to_try = [
+                        "gemini-3.6-flash",
+                        "gemini-1.5-flash-latest"
+                    ]
                     
-                    response = requests.post(url, json=payload, headers=headers)
-                    res_json = response.json()
+                    success = False
+                    
+                    for model_name in models_to_try:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+                        payload = {
+                            "contents": [
+                                {
+                                    "parts": [{"text": prompt_text}]
+                                }
+                            ]
+                        }
+                        headers = {'Content-Type': 'application/json'}
+                        
+                        response = requests.post(url, json=payload, headers=headers)
+                        res_json = response.json()
 
-                    if response.status_code == 200 and 'candidates' in res_json:
-                        analysis_text = res_json['candidates'][0]['content']['parts'][0]['text']
-                        st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
-                        st.subheader(f"📊 {company_name} રિપોર્ટ:")
-                        st.write(analysis_text)
-                    else:
-                        error_msg = res_json.get('error', {}).get('message', 'અજ્ઞાત એરર')
-                        st.error(f"Gemini API એરર: {error_msg}")
+                        if response.status_code == 200 and 'candidates' in res_json:
+                            analysis_text = res_json['candidates'][0]['content']['parts'][0]['text']
+                            st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
+                            st.subheader(f"📊 {company_name} રિપોર્ટ:")
+                            st.write(analysis_text)
+                            success = True
+                            break
+
+                    if not success:
+                        st.error("સર્વર પર અત્યારે વધુ ટ્રાફિક છે. કૃપા કરીને થોડી સેકન્ડ પછી ફરી 'Analyse Stock' બટન પર દબાવો.")
 
             except Exception as e:
                 st.error(f"એરર આવી છે: {str(e)}")
