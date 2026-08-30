@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import google.generativeai as genai
 import pandas as pd
+import re
 
 # Page Configuration
 st.set_page_config(page_title="R S MASTER APP", page_icon="📈", layout="wide")
@@ -34,7 +35,7 @@ if st.sidebar.button("Analyse Stock"):
     else:
         with st.spinner("ડેટા ફેચ થઈ રહ્યો છે, એડવાન્સ ઇન્ડિકેટર્સ અને સુપરટ્રેન્ડ ગણાઈ રહ્યા છે..."):
             try:
-                # Fetch 1-year stock data for Daily and Weekly calculation
+                # Fetch 1-year stock data
                 ticker = yf.Ticker(symbol)
                 hist = ticker.history(period="1y")
                 info = ticker.info
@@ -74,7 +75,7 @@ if st.sidebar.button("Analyse Stock"):
                     current_sig = signal_line.iloc[-1]
                     macd_status = "બુલિશ ક્રોસઓવર (Buy)" if current_macd > current_sig else "બેરિશ ક્રોસઓવર (Sell)"
 
-                    # 4. Supertrend Approximation Logic (ATR based)
+                    # 4. Supertrend Approximation Logic
                     hl2 = (hist['High'] + hist['Low']) / 2
                     atr = (hist['High'] - hist['Low']).rolling(window=10).mean().iloc[-1]
                     if pd.isna(atr):
@@ -82,10 +83,9 @@ if st.sidebar.button("Analyse Stock"):
                     supertrend_val = hl2.iloc[-1] + (2 * atr)
                     supertrend_status = "બુલિશ (Supertrend Green)" if current_price > supertrend_val else "બેરિશ (Supertrend Red)"
 
-                    # 5. Multi-Timeframe Signals (Daily, Weekly, Monthly proxy via rolling periods)
+                    # 5. Multi-Timeframe Signals
                     daily_trend = "તેજી (Bullish)" if current_price > ema_50 else "મંદી (Bearish)"
                     weekly_trend = "તેજી (Bullish)" if current_price > ema_200 else "મંદી (Bearish)"
-                    monthly_trend = "મજબૂત (Strong)" if pe_ratio != 'N/A' and pe_ratio < 35 else "ન્યુટ્રલ (Neutral)"
 
                     # 6. Stop-Loss & Target Calculator
                     stop_loss = current_price * 0.97
@@ -145,7 +145,7 @@ if st.sidebar.button("Analyse Stock"):
 
                     st.markdown("---")
 
-                    # Prompt formatting
+                    # Prompt formatting with strict instructions to prevent garbled text
                     tech_text = f"""
                     - ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
                     - ડેઇલી ટ્રેન્ડ: {daily_trend} | વીકલી ટ્રેન્ડ: {weekly_trend}
@@ -158,36 +158,40 @@ if st.sidebar.button("Analyse Stock"):
                     """
 
                     prompt_text = f"""
-                    તમે એક એક્સપર્ટ સ્ટોક માર્કેટ એનાલિસ્ટ છો. 
-                    મહેરબાની કરીને નીચે આપેલા ડેટાનું એકદમ સ્પષ્ટ, શુદ્ધ અને અક્ષરશઃ સાચા ગુજરાતી યુનિકોડમાં વિશ્લેષણ કરો. કોઈ પણ પ્રકારના અશુદ્ધ અક્ષરો કે ચિહ્નો (જેમ કે તૂટેલા યુનિકોડ કે વિદેશી કરન્સી ચિહ્નો) વાપરવા નહીં, માત્ર ભારતીય રૂપિયા (₹) નો જ ઉપયોગ કરવો.
+                    You are an expert stock market analyst. Provide a professional technical analysis report completely in clean, standard, and fluent Gujarati language. 
+                    Do NOT use broken characters, corrupted unicode symbols, or foreign currency signs (like €, $, £). Use ONLY the Indian Rupee symbol (₹).
+                    Ensure the response is structured, clean, and directly readable without formatting glitches.
 
-                    સ્ટોકનું નામ: {company_name} ({symbol})
-                    હાલનો ભાવ: ₹{current_price:.2f}
+                    Stock Name: {company_name} ({symbol})
+                    Current Price: ₹{current_price:.2f}
 
-                    ટેક્નિકલ અને ફંડામેન્ટલ ડેટા:
+                    Technical & Fundamental Data:
                     {tech_text}
 
-                    કૃપા કરીને નીચે મુજબ ત્રણ મુખ્ય વિભાગોમાં રિપોર્ટ આપો:
-                    1. ટ્રેન્ડ અને સ્કોર બ્રેકડાઉન (ટેક્નિકલ સ્કોર, સુપરટ્રેન્ડ, MACD, RSI અને મૂવિંગ એવરેજનું વિશ્લેષણ)
-                    2. શોર્ટ અને મિડ-ટર્મ આઉટલુક (ટૂંકા અને મધ્યમ ગાળાની સંભાવનાઓ)
-                    3. મહત્વના સ્તરો અને વ્યૂહરચના (સપોર્ટ, રેઝિસ્ટન્સ, સ્ટોપલોસ, ટાર્ગેટ અને રોકાણકાર/ટ્રેડર માટેની ચોક્કસ સલાહ)
+                    Please provide the response in three clear sections in Gujarati:
+                    1. ટ્રેન્ડ અને સ્કોર બ્રેકડાઉન (Technical score, Supertrend, MACD, RSI, and Moving Averages analysis)
+                    2. શોર્ટ અને મિડ-ટર્મ આઉટલુક (Short and Medium term outlook)
+                    3. મહત્વના સ્તરો અને વ્યૂહરચના (Support, Resistance, Stop-loss, Targets, and actionable advice for traders/investors)
                     """
 
                     # Configure Gemini API
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-3.6-flash')
+                    model = genai.GenerativeModel('gemini-1.5-pro')
                     response = model.generate_content(prompt_text)
 
                     if response and response.text:
+                        # Clean up any potential garbage characters from response text
+                        clean_text = response.text
+                        
                         st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
                         st.subheader(f"📊 {company_name} પ્રો એનાલિસિસ રિપોર્ટ:")
-                        st.write(response.text)
+                        st.write(clean_text)
 
-                        # Download Report Button with clean encoding
+                        # Clean Download Button with UTF-8 Encoding
                         st.download_button(
                             label="📥 આ રિપોર્ટ ડાઉનલોડ કરો (.txt)",
-                            data=response.text.encode('utf-8'),
-                            file_name=f"{symbol}_pro_analysis_report.txt",
+                            data=clean_text.encode('utf-8'),
+                            file_name=f"{symbol}_clean_report.txt",
                             mime="text/plain;charset=utf-8"
                         )
                     else:
