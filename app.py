@@ -26,10 +26,7 @@ selected_stock = st.sidebar.selectbox("વોચલિસ્ટમાંથી �
 symbol = st.sidebar.text_input("અથવા કસ્ટમ સિમ્બોલ લખો:", value=selected_stock)
 
 # Analyse Button in Sidebar
-analyse_button = st.sidebar.button("Analyse Stock")
-
-# Main Logic Execution
-if analyse_button:
+if st.sidebar.button("Analyse Stock"):
     if not api_key:
         st.error("મહેરબાની કરીને સાચી Gemini API Key પ્રદાન કરો.")
     elif not symbol:
@@ -126,6 +123,3 @@ if analyse_button:
 
             except Exception as e:
                 st.error(f"એરર આવી છે: {str(e)}")
-else:
-def dummy():
-    pass
