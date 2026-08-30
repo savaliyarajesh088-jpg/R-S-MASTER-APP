@@ -10,21 +10,26 @@ st.set_page_config(page_title="R S MASTER APP", page_icon="📈", layout="wide")
 st.title("📈 R S MASTER APP")
 st.write("ભારતીય સ્ટોક માર્કેટ એડવાન્સ્ડ એનાલિસિસ ડેશબોર્ડ")
 
-# Sidebar Settings & Watchlist
+# Sidebar Elements
 st.sidebar.header("⚙️ સેટિંગ્સ અને વોચલિસ્ટ")
-api_key = st.secrets.get("GEMINI_API_KEY", "")
 
+# API Key Input
+api_key = st.secrets.get("GEMINI_API_KEY", "")
 if not api_key:
     api_key = st.sidebar.text_input("તમારી Gemini API Key નાખો:", type="password")
 
-# Watchlist options
+# Watchlist Dropdown
 popular_stocks = ["TATASTEEL.NS", "RELIANCE.NS", "INFY.NS", "TCS.NS", "SBIN.NS", "HDFCBANK.NS", "ITC.NS", "WIPRO.NS"]
 selected_stock = st.sidebar.selectbox("વોચલિસ્ટમાંથી સ્ટોક પસંદ કરો:", popular_stocks)
 
-# Custom symbol input option
+# Custom Symbol Input
 symbol = st.sidebar.text_input("અથવા કસ્ટમ સિમ્બોલ લખો:", value=selected_stock)
 
-if st.sidebar.button("Analyse Stock"):
+# Analyse Button in Sidebar
+analyse_button = st.sidebar.button("Analyse Stock")
+
+# Main Logic Execution
+if analyse_button:
     if not api_key:
         st.error("મહેરબાની કરીને સાચી Gemini API Key પ્રદાન કરો.")
     elif not symbol:
@@ -46,7 +51,6 @@ if st.sidebar.button("Analyse Stock"):
                     low_52 = hist['Low'].min()
                     company_name = info.get('longName', symbol)
                     pe_ratio = info.get('trailingPE', 'N/A')
-                    market_cap = info.get('marketCap', 'N/A')
 
                     # 1. Calculate Exponential Moving Averages (EMA 10, 20, 50, 100, 200)
                     ema_10 = close_series.ewm(span=10, adjust=False).mean().iloc[-1] if len(close_series) >= 10 else 'N/A'
@@ -122,3 +126,6 @@ if st.sidebar.button("Analyse Stock"):
 
             except Exception as e:
                 st.error(f"એરર આવી છે: {str(e)}")
+else:
+def dummy():
+    pass
