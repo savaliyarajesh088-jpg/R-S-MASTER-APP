@@ -1,6 +1,5 @@
 import streamlit as st
 import yfinance as yf
-import google.generativeai as genai
 import pandas as pd
 
 # Page Configuration
@@ -13,11 +12,6 @@ st.write("ભારતીય સ્ટોક માર્કેટ એડવા�
 # Sidebar Elements
 st.sidebar.header("⚙️ સેટિંગ્સ અને વોચલિસ્ટ")
 
-# API Key Input
-api_key = st.secrets.get("GEMINI_API_KEY", "")
-if not api_key:
-    api_key = st.sidebar.text_input("તમારી Gemini API Key નાખો:", type="password")
-
 # Watchlist Dropdown
 popular_stocks = ["TATASTEEL.NS", "RELIANCE.NS", "INFY.NS", "TCS.NS", "SBIN.NS", "HDFCBANK.NS", "ITC.NS", "WIPRO.NS"]
 selected_stock = st.sidebar.selectbox("વોચલિસ્ટમાંથી સ્ટોક પસંદ કરો:", popular_stocks)
@@ -27,12 +21,10 @@ symbol = st.sidebar.text_input("અથવા કસ્ટમ સિમ્બો�
 
 # Analyse Button in Sidebar
 if st.sidebar.button("Analyse Stock"):
-    if not api_key:
-        st.error("મહેરબાની કરીને સાચી Gemini API Key પ્રદાન કરો.")
-    elif not symbol:
+    if not symbol:
         st.error("મહેરબાની કરીને સ્ટોક સિમ્બોલ લખો.")
     else:
-        with st.spinner("ડેટા ફેચ થઈ રહ્યો છે, ઓટો-સિગ્નલ અને વોલ્યુમ ગણાઈ રહ્યા છે..."):
+        with st.spinner("ડેટા ફેચ થઈ રહ્યો છે, ટેક્નિકલ ઇન્ડિકેટર્સ અને રિપોર્ટ તૈયાર થઈ રહ્યા છે..."):
             try:
                 # Fetch 1-year stock data
                 ticker = yf.Ticker(symbol)
@@ -144,7 +136,7 @@ if st.sidebar.button("Analyse Stock"):
                     st.markdown("---")
 
                     # Scoreboard & Indicators Display
-                    st.subheader(f"🎯 ઓટો-પ્રો સિગ્નલ સ્કોરબોર્ડ: {company_name}")
+                    st.subheader(f"🎯 ઓટો-પ્રો સિગ્નल સ્કોરબોર્ડ: {company_name}")
                     st.info(f"**ઓવરઓલ ટ્રેન્ડ સિગ્નલ:** {verdict}")
 
                     sc1, sc2, sc3 = st.columns(3)
@@ -161,67 +153,59 @@ if st.sidebar.button("Analyse Stock"):
                     st.markdown("---")
                     st.subheader("🛡️ સ્વિંગ ટ્રેડિંગ અને રિસ્ક-ટુ-રિવોર્ડ લેવલ્સ")
                     t_col1, t_col2, t_col3, t_col4 = st.columns(4)
-                    t_col1.metric("સૂચિત સ્ટોપ-લોસ (SL)", f"₹{stop_loss:.2f}", "-3%")
+                    t_col1.metric("સૂચિત સ્ટોપ-લોస్ (SL)", f"₹{stop_loss:.2f}", "-3%")
                     t_col2.metric("પ્રથમ ટાર્ગેટ (T1)", f"₹{target_1:.2f}", "+5%")
                     t_col3.metric("બીજો ટાર્ગેટ (T2)", f"₹{target_2:.2f}", "+10%")
                     t_col4.metric("રિસ્ક-ટુ-રિવોર્ડ રેશિયો", f"1 : {rr_ratio}")
 
                     st.markdown("---")
 
-                    # Clean Prompt Formatting to avoid garbage tokens
-                    tech_text = f"""
-                    - કંપનીનો પરિચય/બિઝનેસ: {business_summary}
-                    - ઓટો-ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
-                    - ડેઇલી ટ્રેન્ડ: {daily_trend} | વીકલી ટ્રેન્ડ: {weekly_trend}
-                    - સુપરટ્રેન્ડ: {supertrend_status} | MACD: {macd_status} | વોલ્યુમ: {volume_status}
-                    - 10-EMA: ₹{ema_10:.2f}, 20-EMA: ₹{ema_20:.2f}, 50-EMA: ₹{ema_50:.2f}, 200-EMA: ₹{ema_200:.2f}
-                    - RSI (14): {current_rsi:.2f}
-                    - સ્ટોપ-લોસ: ₹{stop_loss:.2f} | ટાર્ગેટ: ₹{target_1:.2f} / ₹{target_2:.2f} | રિસ્ક-રિવોર્ડ: 1:{rr_ratio}
-                    - P/E રેશિયો: {pe_ratio} | ROE: {roe_str}
-                    - 52 સપ્તાહ હાઈ/લો: ₹{high_52:.2f} / ₹{low_52:.2f}
-                    """
+                    # Generate Clean Professional Local Report in Gujarati
+                    clean_text = f"""
+==================================================
+📊 {company_name} ({symbol}) - પ્રોફેશનલ એનાલિસિસ રિપોર્ટ
+==================================================
+હાલની કિંમત: ₹{current_price:.2f} | ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
 
-                    prompt_text = f"""
-                    You are a professional financial analyst. Write a clean, precise, and well-structured stock analysis report strictly in fluent Gujarati language.
-                    Do NOT include any random text, fictional stories, irrelevant details, broken characters, or foreign symbols. Use ONLY the Indian Rupee symbol (₹) for currency.
-                    Rely strictly on the provided technical data below:
+૧. કંપનીનો ટૂંકો પરિચય (Company Profile):
+{business_summary}
 
-                    Stock Name: {company_name} ({symbol})
-                    Current Price: ₹{current_price:.2f}
+૨. ટેક્નિકલ સ્કોર અને ઇન્ડિકેટર્સ (Technical Indicators):
+- ઓટો-ટેક્નિકલ સ્કોર: {score}/100 - {verdict}
+- ડેઇલી ટ્રેન્ડ (50-EMA): {daily_trend}
+- વીકલી ટ્રેન્ડ (200-EMA): {weekly_trend}
+- સુપરટ્રેન્ડ સ્ટેટસ: {supertrend_status}
+- MACD ક્રોસઓવર: {macd_status}
+- વોલ્યુમ સ્ટેટસ: {volume_status}
+- RSI (14 દિવસ): {current_rsi:.2f}
+- મૂવિંગ એવરેજ: 10-EMA (₹{ema_10:.2f}), 20-EMA (₹{ema_20:.2f}), 50-EMA (₹{ema_50:.2f}), 200-EMA (₹{ema_200:.2f})
+- ફંડામેન્ટલ્સ: P/E રેશિયો ({pe_ratio}), ROE ({roe_str})
 
-                    Data:
-                    {tech_text}
+૩. શોર્ટ અને મિડ-ટર્મ આઉટલુક (Market Outlook):
+- ૫૨ સપ્તાહની ઊંચાઈ (52W High): ₹{high_52:.2f}
+- ૫૨ સપ્તાહનું તળિયું (52W Low): ₹{low_52:.2f}
+- ટ્રેન્ડ વિશ્લેષણ: હાલમાં સ્ટોકનો ઓવરઓલ સ્કોર {score}/100 છે. જો ભાવ મુખ્ય મૂવિંગ એવરેજથી ઉપર ટ્રેડ થતો હોય તો તેજી જળવાઈ રહે છે, જ્યારે નીચે હોય તો વેચાણનું દબાણ જોવા મળે છે.
 
-                    Structure the response into 4 clean sections in Gujarati:
-                    1. કંપનીનો ટૂંકો પરિચય (Company profile based on business summary)
-                    2. ટેક્નિકલ સ્કોર અને ઇન્ડિકેટર્સ (Score breakdown, EMA, RSI, MACD, Supertrend, Volume)
-                    3. ટ્રેન્ડ આઉટલુક (Short and Medium term market outlook)
-                    4. ટ્રેડિંગ સ્તરો અને વ્યૂહરચના (Support, Stop-loss, Targets, Risk-Reward advice)
-                    """
+૪. મહત્વના ટ્રેડિંગ સ્તરો અને વ્યૂહરચના (Trading Strategy & Levels):
+- સૂચિત સ્ટોપ-લોસ (SL): ₹{stop_loss:.2f} (-3% રિસ્ક)
+- પ્રથમ ટાર્ગેટ (T1): ₹{target_1:.2f} (+5% પ્રોફિટ)
+- બીજો ટાર્ગેટ (T2): ₹{target_2:.2f} (+10% પ્રોફિટ)
+- રિસ્ક-ટુ-રિવોર્ડ રેશિયો: 1 : {rr_ratio}
+- ટ્રેડિંગ સલાહ: સ્વિંગ ટ્રેડર્સ માટે સૂચિત સ્ટોપ-લોસ અનિવાર્ય છે. રિસ્ક-રિવોર્ડ રેશિયો ધ્યાનમાં રાખીને જ પોઝિશન બનાવવી યોગ્ય રહે છે.
+==================================================
+"""
 
-                    # Configure Gemini API with lower temperature for stable output
-                    genai.configure(api_key=api_key)
-                    generation_config = {"temperature": 0.2}
-                    model = genai.GenerativeModel('gemini-3.6-flash', generation_config=generation_config)
-                    
-                    response = model.generate_content(prompt_text)
+                    st.success("એનાલિસિસ રિપોર્ટ સફળતાપૂર્વક તૈયાર થઈ ગયો છે!")
+                    st.subheader(f"📊 {company_name} એનાલિસિસ રિપોર્ટ:")
+                    st.write(clean_text)
 
-                    if response and response.text:
-                        clean_text = response.text
-                        
-                        st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
-                        st.subheader(f"📊 {company_name} ઓટો-પ્રો એનાલિસિસ રિપોર્ટ:")
-                        st.write(clean_text)
-
-                        # Clean Download Button with UTF-8 Encoding
-                        st.download_button(
-                            label="📥 આ રિપોર્ટ ડાઉનલોડ કરો (.txt)",
-                            data=clean_text.encode('utf-8'),
-                            file_name=f"{symbol}_auto_report.txt",
-                            mime="text/plain;charset=utf-8"
-                        )
-                    else:
-                        st.error("એનાલિસિસ જનરેટ કરવામાં સમસ્યા આવી.")
+                    # Download Button
+                    st.download_button(
+                        label="📥 આ રિપોર્ટ ડાઉનલોડ કરો (.txt)",
+                        data=clean_text.encode('utf-8'),
+                        file_name=f"{symbol}_analysis_report.txt",
+                        mime="text/plain;charset=utf-8"
+                    )
 
             except Exception as e:
                 st.error(f"એરર આવી છે: {str(e)}")
