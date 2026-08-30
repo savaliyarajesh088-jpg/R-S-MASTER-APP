@@ -1,12 +1,13 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+from deep_translator import GoogleTranslator
 
 # Page Configuration
-st.set_page_config(page_title="R S MASTER APP", page_icon="📈", layout="wide")
+st.set_page_config(page_title="આર એસ માસ્ટર એપ", page_icon="📈", layout="wide")
 
-# App Title
-st.title("📈 R S MASTER APP")
+# App Title & Headers in Gujarati
+st.title("📈 આર એસ માસ્ટર એપ (R S MASTER APP)")
 st.write("ભારતીય સ્ટોક માર્કેટ એડવાન્સ્ડ એનાલિસિસ એન્ડ ઓટો-સિગ્નલ ડેશબોર્ડ")
 
 # Sidebar Elements
@@ -20,11 +21,11 @@ selected_stock = st.sidebar.selectbox("વોચલિસ્ટમાંથી �
 symbol = st.sidebar.text_input("અથવા કસ્ટમ સિમ્બોલ લખો:", value=selected_stock)
 
 # Analyse Button in Sidebar
-if st.sidebar.button("Analyse Stock"):
+if st.sidebar.button("સ્ટોકનું વિશ્લેષણ કરો"):
     if not symbol:
         st.error("મહેરબાની કરીને સ્ટોક સિમ્બોલ લખો.")
     else:
-        with st.spinner("ડેટા ફેચ થઈ રહ્યો છે, ટેક્નિકલ ઇન્ડિકેટર્સ અને રિપોર્ટ તૈયાર થઈ રહ્યા છે..."):
+        with st.spinner("ડેટા ફેચ થઈ રહ્યો છે, ગુજરાતીમાં અનુવાદ થઈ રહ્યો છે અને રિપોર્ટ તૈયાર થઈ રહ્યો છે..."):
             try:
                 # Fetch 1-year stock data
                 ticker = yf.Ticker(symbol)
@@ -43,8 +44,12 @@ if st.sidebar.button("Analyse Stock"):
                     roe = info.get('returnOnEquity', 'N/A')
                     roe_str = f"{roe * 100:.2f}%" if isinstance(roe, float) else 'N/A'
                     
-                    # Company Business Summary
-                    business_summary = info.get('longBusinessSummary', 'આ કંપની વિશેની વિગતવાર માહિતી ઉપલબ્ધ નથી.')
+                    # Company Business Summary & Translate to Gujarati
+                    raw_summary = info.get('longBusinessSummary', 'આ કંપની વિશેની વિગતવાર માહિતી ઉપલબ્ધ નથી.')
+                    try:
+                        business_summary = GoogleTranslator(source='auto', target='gu').translate(raw_summary)
+                    except:
+                        business_summary = raw_summary
 
                     # 1. Calculate EMAs
                     ema_10 = close_series.ewm(span=10, adjust=False).mean().iloc[-1] if len(close_series) >= 10 else current_price
@@ -68,7 +73,7 @@ if st.sidebar.button("Analyse Stock"):
                     current_macd = macd_line.iloc[-1]
                     current_sig = signal_line.iloc[-1]
                     
-                    macd_status = "🟢 બુલિશ ક્રોસઓવર (Buy)" if current_macd > current_sig else "🔴 બેરિશ ક્રોસઓવર (Sell)"
+                    macd_status = "🟢 બુલિશ ક્રોસઓવર (ખરીદો)" if current_macd > current_sig else "🔴 બેરિશ ક્રોસઓવર (વેચો)"
 
                     # 4. Supertrend Logic
                     hl2 = (hist['High'] + hist['Low']) / 2
@@ -77,7 +82,7 @@ if st.sidebar.button("Analyse Stock"):
                         atr = current_price * 0.02
                     supertrend_val = hl2.iloc[-1] + (2 * atr)
                     
-                    supertrend_status = "🟢 બુલિશ (Supertrend Green)" if current_price > supertrend_val else "🔴 બેરિશ (Supertrend Red)"
+                    supertrend_status = "🟢 બુલિશ (સુપરટ્રેન્ડ ગ્રીન)" if current_price > supertrend_val else "🔴 બેરિશ (સુપરટ્રેન્ડ રેડ)"
 
                     # 5. Volume Spike Check
                     vol_series = hist['Volume'].dropna()
@@ -85,15 +90,15 @@ if st.sidebar.button("Analyse Stock"):
                     avg_vol = vol_series.rolling(20).mean().iloc[-1] if len(vol_series) >= 20 else today_vol
                     
                     if today_vol > (1.5 * avg_vol):
-                        volume_status = "🟢 હાઇ વોલ્યુમ સ્પાઇક (High Buying/Selling)"
+                        volume_status = "🟢 હાઇ વોલ્યુમ સ્પાઇક (વધુ ખરીદી/વેચાણ)"
                         vol_score_add = 15
                     else:
-                        volume_status = "⚪ સામાન્ય વોલ્યુમ (Normal Volume)"
+                        volume_status = "⚪ સામાન્ય વોલ્યુમ"
                         vol_score_add = 0
 
                     # 6. Multi-Timeframe Trends
-                    daily_trend = "🟢 તેજી (Bullish)" if current_price > ema_50 else "🔴 મંદી (Bearish)"
-                    weekly_trend = "🟢 તેજી (Bullish)" if current_price > ema_200 else "🔴 મંદી (Bearish)"
+                    daily_trend = "🟢 તેજી (બુલિશ)" if current_price > ema_50 else "🔴 મંદી (બેરિશ)"
+                    weekly_trend = "🟢 તેજી (બુલિશ)" if current_price > ema_200 else "🔴 મંદી (બેરિશ)"
 
                     # 7. Stop-Loss, Targets & Risk-to-Reward Ratio Calculator
                     stop_loss = current_price * 0.97
@@ -120,43 +125,43 @@ if st.sidebar.button("Analyse Stock"):
                     score = max(0, min(100, score))
 
                     if score >= 70:
-                        verdict = "🔥 મજબૂત બુલિશ (Strong Buy)"
+                        verdict = "🔥 મજબૂત બુલિશ (સ્ટ્રોંગ બાય)"
                     elif score >= 50:
-                        verdict = "⚖️ સાઇડવેઝ / હોલ્ડ (Sideways / Hold)"
+                        verdict = "⚖️ સાઇડવેઝ / હોલ્ડ (તટસ્થ)"
                     else:
-                        verdict = "🔻 બેરિશ / વેચાણ દબાણ (Weak / Sell)"
+                        verdict = "🔻 બેરિશ / વેચાણ દબાણ (વિક ૧૩/સેલ)"
 
                     # Display UI Metrics
                     col1, col2, col3, col4 = st.columns(4)
                     col1.metric("હાલનો ભાવ", f"₹{current_price:.2f}")
                     col2.metric("ઓટો-ટેક્નિકલ સ્કોર", f"{score} / 100")
-                    col3.metric("RSI (૧૪)", f"{current_rsi:.2f}")
+                    col3.metric("આરએસઆઈ (RSI 14)", f"{current_rsi:.2f}")
                     col4.metric("૫૨ સપ્તાહ હાઈ", f"₹{high_52:.2f}")
 
                     st.markdown("---")
 
                     # Scoreboard & Indicators Display
-                    st.subheader(f"🎯 ઓટો-પ્રો સિગ્નल સ્કોરબોર્ડ: {company_name}")
+                    st.subheader(f"🎯 ઓટો-પ્રો સિગ્નલ સ્કોરબોર્ડ: {company_name}")
                     st.info(f"**ઓવરઓલ ટ્રેન્ડ સિગ્નલ:** {verdict}")
 
                     sc1, sc2, sc3 = st.columns(3)
-                    sc1.write(f"**ડેઇલી ટ્રેન્ડ:** {daily_trend}")
-                    sc2.write(f"**વીકલી ટ્રેન્ડ:** {weekly_trend}")
+                    sc1.write(f"**દૈનિક ટ્રેન્ડ:** {daily_trend}")
+                    sc2.write(f"**સાપ્તાહિક ટ્રેન્ડ:** {weekly_trend}")
                     sc3.write(f"**સુપરટ્રેન્ડ:** {supertrend_status}")
 
                     sc4, sc5, sc6 = st.columns(3)
-                    sc4.write(f"**MACD સ્ટેટસ:** {macd_status}")
-                    sc5.write(f"**વોલ્યુમ સ્ટેટસ:** {volume_status}")
+                    sc4.write(f"**એમએસીડી (MACD):** {macd_status}")
+                    sc5.write(f"**વોલ્યુમ સ્થિતિ:** {volume_status}")
                     sc6.write(f"📊 **૫૨ સપ્તાહ લો:** ₹{low_52:.2f}")
 
                     # Swing Trading Levels & Risk-Reward
                     st.markdown("---")
-                    st.subheader("🛡️ સ્વિંગ ટ્રેડિંગ અને રિસ્ક-ટુ-રિવોર્ડ લેવલ્સ")
+                    st.subheader("🛡️ સ્વિંગ ટ્રેડિંગ અને રિસ્ક-ટુ-રિવોર્ડ સ્તરો")
                     t_col1, t_col2, t_col3, t_col4 = st.columns(4)
-                    t_col1.metric("સૂચિત સ્ટોપ-લોస్ (SL)", f"₹{stop_loss:.2f}", "-3%")
+                    t_col1.metric("સૂચિત સ્ટોપ-લોસ (SL)", f"₹{stop_loss:.2f}", "-3%")
                     t_col2.metric("પ્રથમ ટાર્ગેટ (T1)", f"₹{target_1:.2f}", "+5%")
                     t_col3.metric("બીજો ટાર્ગેટ (T2)", f"₹{target_2:.2f}", "+10%")
-                    t_col4.metric("રિસ્ક-ટુ-રિવોર્ડ રેશિયો", f"1 : {rr_ratio}")
+                    t_col4.metric("રિસ્ક-ટુ-રિવોર્ડ ગુણોત્તર", f"1 : {rr_ratio}")
 
                     st.markdown("---")
 
@@ -167,31 +172,31 @@ if st.sidebar.button("Analyse Stock"):
 ==================================================
 હાલની કિંમત: ₹{current_price:.2f} | ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
 
-૧. કંપનીનો ટૂંકો પરિચય (Company Profile):
+૧. કંપનીનો ટૂંકો પરિચય (કંપની પ્રોફાઇલ):
 {business_summary}
 
-૨. ટેક્નિકલ સ્કોર અને ઇન્ડિકેટર્સ (Technical Indicators):
+૨. ટેક્નિકલ સ્કોર અને સૂચકાંકો (ટેક્નિકલ ઇન્ડિકેટર્સ):
 - ઓટો-ટેક્નિકલ સ્કોર: {score}/100 - {verdict}
-- ડેઇલી ટ્રેન્ડ (50-EMA): {daily_trend}
-- વીકલી ટ્રેન્ડ (200-EMA): {weekly_trend}
-- સુપરટ્રેન્ડ સ્ટેટસ: {supertrend_status}
-- MACD ક્રોસઓવર: {macd_status}
-- વોલ્યુમ સ્ટેટસ: {volume_status}
-- RSI (14 દિવસ): {current_rsi:.2f}
+- દૈનિક ટ્રેન્ડ (50-EMA): {daily_trend}
+- સાપ્તાહિક ટ્રેન્ડ (200-EMA): {weekly_trend}
+- સુપરટ્રેન્ડ સ્થિતિ: {supertrend_status}
+- એમએસીડી ક્રોસઓવર: {macd_status}
+- વોલ્યુમ સ્થિતિ: {volume_status}
+- આરએસઆઈ (૧૪ દિવસ): {current_rsi:.2f}
 - મૂવિંગ એવરેજ: 10-EMA (₹{ema_10:.2f}), 20-EMA (₹{ema_20:.2f}), 50-EMA (₹{ema_50:.2f}), 200-EMA (₹{ema_200:.2f})
 - ફંડામેન્ટલ્સ: P/E રેશિયો ({pe_ratio}), ROE ({roe_str})
 
-૩. શોર્ટ અને મિડ-ટર્મ આઉટલુક (Market Outlook):
+૩. શોર્ટ અને મિડ-ટર્મ માર્કેટ આઉટલુક:
 - ૫૨ સપ્તાહની ઊંચાઈ (52W High): ₹{high_52:.2f}
 - ૫૨ સપ્તાહનું તળિયું (52W Low): ₹{low_52:.2f}
 - ટ્રેન્ડ વિશ્લેષણ: હાલમાં સ્ટોકનો ઓવરઓલ સ્કોર {score}/100 છે. જો ભાવ મુખ્ય મૂવિંગ એવરેજથી ઉપર ટ્રેડ થતો હોય તો તેજી જળવાઈ રહે છે, જ્યારે નીચે હોય તો વેચાણનું દબાણ જોવા મળે છે.
 
-૪. મહત્વના ટ્રેડિંગ સ્તરો અને વ્યૂહરચના (Trading Strategy & Levels):
-- સૂચિત સ્ટોપ-લોસ (SL): ₹{stop_loss:.2f} (-3% રિસ્ક)
-- પ્રથમ ટાર્ગેટ (T1): ₹{target_1:.2f} (+5% પ્રોફિટ)
-- બીજો ટાર્ગેટ (T2): ₹{target_2:.2f} (+10% પ્રોફિટ)
-- રિસ્ક-ટુ-રિવોર્ડ રેશિયો: 1 : {rr_ratio}
-- ટ્રેડિંગ સલાહ: સ્વિંગ ટ્રેડર્સ માટે સૂચિત સ્ટોપ-લોસ અનિવાર્ય છે. રિસ્ક-રિવોર્ડ રેશિયો ધ્યાનમાં રાખીને જ પોઝિશન બનાવવી યોગ્ય રહે છે.
+૪. મહત્વના ટ્રેડિંગ સ્તરો અને વ્યૂહરચના:
+- સૂચિત સ્ટોપ-લોસ (SL): ₹{stop_loss:.2f} (-3% જોખમ)
+- પ્રથમ ટાર્ગેટ (T1): ₹{target_1:.2f} (+5% નફો)
+- બીજો ટાર્ગેટ (T2): ₹{target_2:.2f} (+10% નફો)
+- રિસ્ક-ટુ-રિવોર્ડ ગુણોત્તર: 1 : {rr_ratio}
+- ટ્રેડિંગ સલાહ: સ્વિંગ ટ્રેડર્સ માટે સૂચિત સ્ટોપ-લોસ અનિવાર્ય છે. રિસ્ક-રિવોર્ડ ગુણોત્તર ધ્યાનમાં રાખીને જ પોઝિશન બનાવવી યોગ્ય રહે છે.
 ==================================================
 """
 
