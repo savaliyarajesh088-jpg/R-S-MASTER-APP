@@ -202,7 +202,7 @@ if st.sidebar.button("Analyse Stock"):
                     # Configure Gemini API with lower temperature for stable output
                     genai.configure(api_key=api_key)
                     generation_config = {"temperature": 0.2}
-                    model = genai.GenerativeModel('gemini-1.5-flash', generation_config=generation_config)
+                    model = genai.GenerativeModel('gemini-3.6-flash', generation_config=generation_config)
                     
                     response = model.generate_content(prompt_text)
 
