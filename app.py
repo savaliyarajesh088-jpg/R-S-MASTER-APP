@@ -2,14 +2,13 @@ import streamlit as st
 import yfinance as yf
 import google.generativeai as genai
 import pandas as pd
-import re
 
 # Page Configuration
 st.set_page_config(page_title="R S MASTER APP", page_icon="📈", layout="wide")
 
 # App Title
 st.title("📈 R S MASTER APP")
-st.write("ભારતીય સ્ટોક માર્કેટ એડવાન્સ્ડ એનાલિસિસ એન્ડ પ્રો સિગ્નલ ડેશબોર્ડ")
+st.write("ભારતીય સ્ટોક માર્કેટ એડવાન્સ્ડ એનાલિસિસ એન્ડ ઓટો-સિગ્નલ ડેશબોર્ડ")
 
 # Sidebar Elements
 st.sidebar.header("⚙️ સેટિંગ્સ અને વોચલિસ્ટ")
@@ -33,7 +32,7 @@ if st.sidebar.button("Analyse Stock"):
     elif not symbol:
         st.error("મહેરબાની કરીને સ્ટોક સિમ્બોલ લખો.")
     else:
-        with st.spinner("ડેટા ફેચ થઈ રહ્યો છે, એડવાન્સ ઇન્ડિકેટર્સ અને સુપરટ્રેન્ડ ગણાઈ રહ્યા છે..."):
+        with st.spinner("ડેટા ફેચ થઈ રહ્યો છે, ઓટો-સિગ્નલ અને વોલ્યુમ ગણાઈ રહ્યા છે..."):
             try:
                 # Fetch 1-year stock data
                 ticker = yf.Ticker(symbol)
@@ -51,6 +50,9 @@ if st.sidebar.button("Analyse Stock"):
                     pe_ratio = info.get('trailingPE', 'N/A')
                     roe = info.get('returnOnEquity', 'N/A')
                     roe_str = f"{roe * 100:.2f}%" if isinstance(roe, float) else 'N/A'
+                    
+                    # Company Business Summary
+                    business_summary = info.get('longBusinessSummary', 'આ કંપની વિશેની વિગતવાર માહિતી ઉપલબ્ધ નથી.')
 
                     # 1. Calculate EMAs
                     ema_10 = close_series.ewm(span=10, adjust=False).mean().iloc[-1] if len(close_series) >= 10 else current_price
@@ -73,36 +75,55 @@ if st.sidebar.button("Analyse Stock"):
                     signal_line = macd_line.ewm(span=9, adjust=False).mean()
                     current_macd = macd_line.iloc[-1]
                     current_sig = signal_line.iloc[-1]
-                    macd_status = "બુલિશ ક્રોસઓવર (Buy)" if current_macd > current_sig else "બેરિશ ક્રોસઓવર (Sell)"
+                    
+                    macd_status = "🟢 બુલિશ ક્રોસઓવર (Buy)" if current_macd > current_sig else "🔴 બેરિશ ક્રોસઓવર (Sell)"
 
-                    # 4. Supertrend Approximation Logic
+                    # 4. Supertrend Logic
                     hl2 = (hist['High'] + hist['Low']) / 2
                     atr = (hist['High'] - hist['Low']).rolling(window=10).mean().iloc[-1]
                     if pd.isna(atr):
                         atr = current_price * 0.02
                     supertrend_val = hl2.iloc[-1] + (2 * atr)
-                    supertrend_status = "બુલિશ (Supertrend Green)" if current_price > supertrend_val else "બેરિશ (Supertrend Red)"
+                    
+                    supertrend_status = "🟢 બુલિશ (Supertrend Green)" if current_price > supertrend_val else "🔴 બેરિશ (Supertrend Red)"
 
-                    # 5. Multi-Timeframe Signals
-                    daily_trend = "તેજી (Bullish)" if current_price > ema_50 else "મંદી (Bearish)"
-                    weekly_trend = "તેજી (Bullish)" if current_price > ema_200 else "મંદી (Bearish)"
+                    # 5. Volume Spike Check (Today Volume vs 20-Day Avg Volume)
+                    vol_series = hist['Volume'].dropna()
+                    today_vol = vol_series.iloc[-1] if not vol_series.empty else 0
+                    avg_vol = vol_series.rolling(20).mean().iloc[-1] if len(vol_series) >= 20 else today_vol
+                    
+                    if today_vol > (1.5 * avg_vol):
+                        volume_status = "🟢 હાઇ વોલ્યુમ સ્પાઇક (High Buying/Selling)"
+                        vol_score_add = 15
+                    else:
+                        volume_status = "⚪ સામાન્ય વોલ્યુમ (Normal Volume)"
+                        vol_score_add = 0
 
-                    # 6. Stop-Loss & Target Calculator
+                    # 6. Multi-Timeframe Trends
+                    daily_trend = "🟢 તેજી (Bullish)" if current_price > ema_50 else "🔴 મંદી (Bearish)"
+                    weekly_trend = "🟢 તેજી (Bullish)" if current_price > ema_200 else "🔴 મંદી (Bearish)"
+
+                    # 7. Stop-Loss, Targets & Risk-to-Reward Ratio Calculator
                     stop_loss = current_price * 0.97
                     target_1 = current_price * 1.05
                     target_2 = current_price * 1.10
+                    
+                    risk = current_price - stop_loss
+                    reward = target_1 - current_price
+                    rr_ratio = round(reward / risk, 2) if risk > 0 else 0
 
-                    # 7. Technical Score Calculation (Out of 100)
-                    score = 50
+                    # 8. Automatic Dynamic Score Calculation (Out of 100)
+                    score = 40  # Base Score
                     if current_price > ema_200: score += 15
-                    else: score -= 15
+                    else: score -= 10
                     if current_price > ema_50: score += 15
-                    else: score -= 15
+                    else: score -= 10
                     if 40 <= current_rsi <= 70: score += 15
                     elif current_rsi > 70: score += 5
                     else: score -= 10
                     if current_macd > current_sig: score += 10
                     else: score -= 10
+                    score += vol_score_add
                     
                     score = max(0, min(100, score))
 
@@ -116,51 +137,54 @@ if st.sidebar.button("Analyse Stock"):
                     # Display UI Metrics
                     col1, col2, col3, col4 = st.columns(4)
                     col1.metric("હાલનો ભાવ", f"₹{current_price:.2f}")
-                    col2.metric("ટેક્નિકલ સ્કોર", f"{score} / 100")
+                    col2.metric("ઓટો-ટેક્નિકલ સ્કોર", f"{score} / 100")
                     col3.metric("RSI (૧૪)", f"{current_rsi:.2f}")
                     col4.metric("૫૨ સપ્તાહ હાઈ", f"₹{high_52:.2f}")
 
                     st.markdown("---")
 
                     # Scoreboard & Indicators Display
-                    st.subheader(f"🎯 પ્રો સિગ્નલ સ્કોરબોર્ડ: {company_name}")
+                    st.subheader(f"🎯 ઓટો-પ્રો સિગ્નલ સ્કોરબોર્ડ: {company_name}")
                     st.info(f"**ઓવરઓલ ટ્રેન્ડ સિગ્નલ:** {verdict}")
 
                     sc1, sc2, sc3 = st.columns(3)
-                    sc1.write(f"🟢 **ડેઇલી ટ્રેન્ડ:** {daily_trend}")
-                    sc2.write(f"🔵 **વીકલી ટ્રેન્ડ:** {weekly_trend}")
-                    sc3.write(f"🟣 **સુપરટ્રેન્ડ:** {supertrend_status}")
+                    sc1.write(f"**ડેઇલી ટ્રેન્ડ:** {daily_trend}")
+                    sc2.write(f"**વીકલી ટ્રેન્ડ:** {weekly_trend}")
+                    sc3.write(f"**સુપરટ્રેન્ડ:** {supertrend_status}")
 
-                    sc4, sc5 = st.columns(2)
-                    sc4.write(f"⚡ **MACD સ્ટેટસ:** {macd_status}")
-                    sc5.write(f"📊 **૫૨ સપ્તાહ લો:** ₹{low_52:.2f}")
+                    sc4, sc5, sc6 = st.columns(3)
+                    sc4.write(f"**MACD સ્ટેટસ:** {macd_status}")
+                    sc5.write(f"**વોલ્યુમ સ્ટેટસ:** {volume_status}")
+                    sc6.write(f"📊 **૫૨ સપ્તાહ લો:** ₹{low_52:.2f}")
 
-                    # Swing Trading Levels
+                    # Swing Trading Levels & Risk-Reward
                     st.markdown("---")
-                    st.subheader("🛡️ સ્વિંગ ટ્રેડિંગ અને ઇન્વેસ્ટમેન્ટ લેવલ્સ")
-                    t_col1, t_col2, t_col3 = st.columns(3)
+                    st.subheader("🛡️ સ્વિંગ ટ્રેડિંગ અને રિસ્ક-ટુ-રિવોર્ડ લેવલ્સ")
+                    t_col1, t_col2, t_col3, t_col4 = st.columns(4)
                     t_col1.metric("સૂચિત સ્ટોપ-લોસ (SL)", f"₹{stop_loss:.2f}", "-3%")
                     t_col2.metric("પ્રથમ ટાર્ગેટ (T1)", f"₹{target_1:.2f}", "+5%")
                     t_col3.metric("બીજો ટાર્ગેટ (T2)", f"₹{target_2:.2f}", "+10%")
+                    t_col4.metric("રિસ્ક-ટુ-રિવોર્ડ રેશિયો", f"1 : {rr_ratio}")
 
                     st.markdown("---")
 
-                    # Prompt formatting with strict instructions to prevent garbled text
+                    # Prompt formatting including Auto-Signals
                     tech_text = f"""
-                    - ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
+                    - કંપનીનો પરિચય/બિઝનેસ: {business_summary}
+                    - ઓટો-ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
                     - ડેઇલી ટ્રેન્ડ: {daily_trend} | વીકલી ટ્રેન્ડ: {weekly_trend}
-                    - સુપરટ્રેન્ડ: {supertrend_status} | MACD: {macd_status}
+                    - સુપરટ્રેન્ડ: {supertrend_status} | MACD: {macd_status} | વોલ્યુમ: {volume_status}
                     - 10-EMA: ₹{ema_10:.2f}, 20-EMA: ₹{ema_20:.2f}, 50-EMA: ₹{ema_50:.2f}, 200-EMA: ₹{ema_200:.2f}
                     - RSI (14): {current_rsi:.2f}
-                    - સ્ટોપ-લોસ: ₹{stop_loss:.2f} | ટાર્ગેટ: ₹{target_1:.2f} / ₹{target_2:.2f}
+                    - સ્ટોપ-લોસ: ₹{stop_loss:.2f} | ટાર્ગેટ: ₹{target_1:.2f} / ₹{target_2:.2f} | રિસ્ક-રિવોર્ડ: 1:{rr_ratio}
                     - P/E રેશિયો: {pe_ratio} | ROE: {roe_str}
                     - 52 સપ્તાહ હાઈ/લો: ₹{high_52:.2f} / ₹{low_52:.2f}
                     """
 
                     prompt_text = f"""
-                    You are an expert stock market analyst. Provide a professional technical analysis report completely in clean, standard, and fluent Gujarati language. 
+                    You are an expert stock market analyst. Provide a professional technical and fundamental analysis report completely in clean, standard, and fluent Gujarati language. 
                     Do NOT use broken characters, corrupted unicode symbols, or foreign currency signs (like €, $, £). Use ONLY the Indian Rupee symbol (₹).
-                    Ensure the response is structured, clean, and directly readable without formatting glitches.
+                    Ensure the response is structured, clean, and directly readable without formatting glitches based on the auto-calculated indicators.
 
                     Stock Name: {company_name} ({symbol})
                     Current Price: ₹{current_price:.2f}
@@ -168,10 +192,11 @@ if st.sidebar.button("Analyse Stock"):
                     Technical & Fundamental Data:
                     {tech_text}
 
-                    Please provide the response in three clear sections in Gujarati:
-                    1. ટ્રેન્ડ અને સ્કોર બ્રેકડાઉન (Technical score, Supertrend, MACD, RSI, and Moving Averages analysis)
-                    2. શોર્ટ અને મિડ-ટર્મ આઉટલુક (Short and Medium term outlook)
-                    3. મહત્વના સ્તરો અને વ્યૂહરચના (Support, Resistance, Stop-loss, Targets, and actionable advice for traders/investors)
+                    Please provide the response in four clear sections in Gujarati:
+                    1. કંપનીનો ટૂંકો પરિચય (Company Business Profile & Overview based on summary)
+                    2. ઓટો-સ્કોર અને ટ્રેન્ડ બ્રેકડાઉન (Automatic technical score, Supertrend, MACD, Volume spike, RSI, and Moving Averages analysis)
+                    3. શોર્ટ અને મિડ-ટર્મ આઉટલુક (Short and Medium term outlook)
+                    4. મહત્વના સ્તરો અને વ્યૂહરચના (Support, Resistance, Stop-loss, Targets, Risk-Reward evaluation, and actionable advice for traders/investors)
                     """
 
                     # Configure Gemini API
@@ -180,18 +205,17 @@ if st.sidebar.button("Analyse Stock"):
                     response = model.generate_content(prompt_text)
 
                     if response and response.text:
-                        # Clean up any potential garbage characters from response text
                         clean_text = response.text
                         
                         st.success("એનાલિસિસ સફળતાપૂર્વક પૂર્ણ થયું!")
-                        st.subheader(f"📊 {company_name} પ્રો એનાલિસિસ રિપોર્ટ:")
+                        st.subheader(f"📊 {company_name} ઓટો-પ્રો એનાલિસિસ રિપોર્ટ:")
                         st.write(clean_text)
 
                         # Clean Download Button with UTF-8 Encoding
                         st.download_button(
                             label="📥 આ રિપોર્ટ ડાઉનલોડ કરો (.txt)",
                             data=clean_text.encode('utf-8'),
-                            file_name=f"{symbol}_clean_report.txt",
+                            file_name=f"{symbol}_auto_report.txt",
                             mime="text/plain;charset=utf-8"
                         )
                     else:
