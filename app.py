@@ -87,7 +87,7 @@ if st.sidebar.button("Analyse Stock"):
                     
                     supertrend_status = "🟢 બુલિશ (Supertrend Green)" if current_price > supertrend_val else "🔴 બેરિશ (Supertrend Red)"
 
-                    # 5. Volume Spike Check (Today Volume vs 20-Day Avg Volume)
+                    # 5. Volume Spike Check
                     vol_series = hist['Volume'].dropna()
                     today_vol = vol_series.iloc[-1] if not vol_series.empty else 0
                     avg_vol = vol_series.rolling(20).mean().iloc[-1] if len(vol_series) >= 20 else today_vol
@@ -168,7 +168,7 @@ if st.sidebar.button("Analyse Stock"):
 
                     st.markdown("---")
 
-                    # Prompt formatting including Auto-Signals
+                    # Clean Prompt Formatting to avoid garbage tokens
                     tech_text = f"""
                     - કંપનીનો પરિચય/બિઝનેસ: {business_summary}
                     - ઓટો-ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
@@ -182,26 +182,28 @@ if st.sidebar.button("Analyse Stock"):
                     """
 
                     prompt_text = f"""
-                    You are an expert stock market analyst. Provide a professional technical and fundamental analysis report completely in clean, standard, and fluent Gujarati language. 
-                    Do NOT use broken characters, corrupted unicode symbols, or foreign currency signs (like €, $, £). Use ONLY the Indian Rupee symbol (₹).
-                    Ensure the response is structured, clean, and directly readable without formatting glitches based on the auto-calculated indicators.
+                    You are a professional financial analyst. Write a clean, precise, and well-structured stock analysis report strictly in fluent Gujarati language.
+                    Do NOT include any random text, fictional stories, irrelevant details, broken characters, or foreign symbols. Use ONLY the Indian Rupee symbol (₹) for currency.
+                    Rely strictly on the provided technical data below:
 
                     Stock Name: {company_name} ({symbol})
                     Current Price: ₹{current_price:.2f}
 
-                    Technical & Fundamental Data:
+                    Data:
                     {tech_text}
 
-                    Please provide the response in four clear sections in Gujarati:
-                    1. કંપનીનો ટૂંકો પરિચય (Company Business Profile & Overview based on summary)
-                    2. ઓટો-સ્કોર અને ટ્રેન્ડ બ્રેકડાઉન (Automatic technical score, Supertrend, MACD, Volume spike, RSI, and Moving Averages analysis)
-                    3. શોર્ટ અને મિડ-ટર્મ આઉટલુક (Short and Medium term outlook)
-                    4. મહત્વના સ્તરો અને વ્યૂહરચના (Support, Resistance, Stop-loss, Targets, Risk-Reward evaluation, and actionable advice for traders/investors)
+                    Structure the response into 4 clean sections in Gujarati:
+                    1. કંપનીનો ટૂંકો પરિચય (Company profile based on business summary)
+                    2. ટેક્નિકલ સ્કોર અને ઇન્ડિકેટર્સ (Score breakdown, EMA, RSI, MACD, Supertrend, Volume)
+                    3. ટ્રેન્ડ આઉટલુક (Short and Medium term market outlook)
+                    4. ટ્રેડિંગ સ્તરો અને વ્યૂહરચના (Support, Stop-loss, Targets, Risk-Reward advice)
                     """
 
-                    # Configure Gemini API
+                    # Configure Gemini API with lower temperature for stable output
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-3.6-flash')
+                    generation_config = {"temperature": 0.2}
+                    model = genai.GenerativeModel('gemini-1.5-flash', generation_config=generation_config)
+                    
                     response = model.generate_content(prompt_text)
 
                     if response and response.text:
