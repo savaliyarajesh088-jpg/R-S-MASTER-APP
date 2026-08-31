@@ -3,33 +3,75 @@ import yfinance as yf
 import pandas as pd
 from deep_translator import GoogleTranslator
 
-# Page Configuration
-st.set_page_config(page_title="આર એસ માસ્ટર એપ", page_icon="📈", layout="wide")
+# Page Configuration & Professional Styling
+st.set_page_config(page_title="આર એસ માસ્ટર એપ - પ્રો", page_icon="📈", layout="wide")
+
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stMetric { background-color: #1f2937; padding: 15px; border-radius: 10px; border: 1px solid #374151; }
+    </style>
+""", unsafe_allow_html=True)
 
 # App Title & Headers in Gujarati
-st.title("📈 આર એસ માસ્ટર એપ (R S MASTER APP)")
-st.write("ભારતીય સ્ટોક માર્કેટ એડવાન્સ્ડ એનાલિસિસ એન્ડ ઓટો-સિગ્નલ ડેશબોર્ડ")
+st.title("📈 આર એસ માસ્ટર એપ - પ્રો ટ્રેડિંગ ડેશબોર્ડ")
+st.markdown("---")
+
+# Initialize Session State for Watchlist
+if 'watchlist' not in st.session_state:
+    st.session_state.watchlist = [
+        "TATASTEEL.NS", "RELIANCE.NS", "INFY.NS", "TCS.NS", 
+        "SBIN.NS", "HDFCBANK.NS", "ITC.NS", "WIPRO.NS"
+    ]
 
 # Sidebar Elements
-st.sidebar.header("⚙️ સેટિંગ્સ અને વોચલિસ્ટ")
+st.sidebar.header("⚙️ સેટિંગ્સ અને વોચલિસ્ટ મેનેજમેન્ટ")
 
-# Watchlist Dropdown
-popular_stocks = ["TATASTEEL.NS", "RELIANCE.NS", "INFY.NS", "TCS.NS", "SBIN.NS", "HDFCBANK.NS", "ITC.NS", "WIPRO.NS"]
-selected_stock = st.sidebar.selectbox("વોચલિસ્ટમાંથી સ્ટોક પસંદ કરો:", popular_stocks)
+# 1. Add New Stock Section
+st.sidebar.subheader("➕ નવો સ્ટોક ઉમેરો")
+new_stock_input = st.sidebar.text_input("સ્ટોક સિમ્બોલ લખો (દા.ત. ZOMATO.NS):")
 
-# Custom Symbol Input
-symbol = st.sidebar.text_input("અથવા કસ્ટમ સિમ્બોલ લખો:", value=selected_stock)
+if st.sidebar.button("વોચલિસ્ટમાં ઉમેરો"):
+    if new_stock_input:
+        cleaned_symbol = new_stock_input.strip().upper()
+        if cleaned_symbol not in st.session_state.watchlist:
+            st.session_state.watchlist.append(cleaned_symbol)
+            st.sidebar.success(f"{cleaned_symbol} સફળતાપૂર્વક ઉમેરાઈ ગયો!")
+            st.rerun()
+        else:
+            st.sidebar.warning("આ સ્ટોક પહેલેથી જ લિસ્ટમાં છે.")
+    else:
+        st.sidebar.error("કૃપા કરીને સાચો સિમ્બોલ લખો.")
+
+st.sidebar.markdown("---")
+
+# 2. Remove Stock Section
+st.sidebar.subheader("🗑️ સ્ટોક દૂર કરો")
+if len(st.session_state.watchlist) > 0:
+    stock_to_remove = st.sidebar.selectbox("દૂર કરવા માટે સ્ટોક પસંદ કરો:", st.session_state.watchlist, key="remove_box")
+    if st.sidebar.button("પસંદ કરેલ સ્ટોક દૂર કરો"):
+        if stock_to_remove in st.session_state.watchlist:
+            st.session_state.watchlist.remove(stock_to_remove)
+            st.sidebar.success(f"{stock_to_remove} સફળતાપૂર્વક દૂર થઈ ગયો!")
+            st.rerun()
+
+st.sidebar.markdown("---")
+
+# 3. Watchlist Selection for Analysis
+st.sidebar.subheader("📋 તમારી વોચલિસ્ટ")
+selected_stock = st.sidebar.selectbox("विश्લેષણ માટે સ્ટોક પસંદ કરો:", st.session_state.watchlist, key="analysis_box")
 
 # Analyse Button in Sidebar
-if st.sidebar.button("સ્ટોકનું વિશ્લેષણ કરો"):
-    if not symbol:
-        st.error("મહેરબાની કરીને સ્ટોક સિમ્બોલ લખો.")
+if st.sidebar.button("સ્ટોકનું પ્રોફેશનલ વિશ્લેષણ કરો"):
+    if not selected_stock:
+        st.error("મહેરબાની કરીને સ્ટોક પસંદ કરો.")
     else:
-        with st.spinner("ડેટા ફેચ થઈ રહ્યો છે, ગુજરાતીમાં અનુવાદ થઈ રહ્યો છે અને રિપોર્ટ તૈયાર થઈ રહ્યો છે..."):
+        with st.spinner(f"{selected_stock} નો ડેટા ફેચ થઈ રહ્યો છે..."):
             try:
-                # Fetch 1-year stock data
-                ticker = yf.Ticker(symbol)
+                # Fetch 1-year and 5-year data for multi-timeframe analysis
+                ticker = yf.Ticker(selected_stock)
                 hist = ticker.history(period="1y")
+                hist_monthly = ticker.history(period="5y", interval="1mo")
                 info = ticker.info
 
                 if hist.empty or hist['Close'].dropna().empty:
@@ -39,7 +81,7 @@ if st.sidebar.button("સ્ટોકનું વિશ્લેષણ કર�
                     current_price = close_series.iloc[-1]
                     high_52 = hist['High'].max()
                     low_52 = hist['Low'].min()
-                    company_name = info.get('longName', symbol)
+                    company_name = info.get('longName', selected_stock)
                     pe_ratio = info.get('trailingPE', 'N/A')
                     roe = info.get('returnOnEquity', 'N/A')
                     roe_str = f"{roe * 100:.2f}%" if isinstance(roe, float) else 'N/A'
@@ -51,11 +93,19 @@ if st.sidebar.button("સ્ટોકનું વિશ્લેષણ કર�
                     except:
                         business_summary = raw_summary
 
-                    # 1. Calculate EMAs
+                    # 1. Calculate EMAs (Daily)
                     ema_10 = close_series.ewm(span=10, adjust=False).mean().iloc[-1] if len(close_series) >= 10 else current_price
                     ema_20 = close_series.ewm(span=20, adjust=False).mean().iloc[-1] if len(close_series) >= 20 else current_price
                     ema_50 = close_series.ewm(span=50, adjust=False).mean().iloc[-1] if len(close_series) >= 50 else current_price
                     ema_200 = close_series.ewm(span=200, adjust=False).mean().iloc[-1] if len(close_series) >= 200 else current_price
+
+                    # Monthly Trend Calculation
+                    if not hist_monthly.empty and len(hist_monthly['Close'].dropna()) >= 12:
+                        m_close = hist_monthly['Close'].dropna()
+                        monthly_ema = m_close.ewm(span=12, adjust=False).mean().iloc[-1]
+                        monthly_trend = "🟢 તેજી (બુલિશ)" if m_close.iloc[-1] > monthly_ema else "🔴 મંદી (બેરિશ)"
+                    else:
+                        monthly_trend = "⚪ તટસ્થ / ડેટા મર્યાદિત"
 
                     # 2. Calculate RSI (14)
                     delta = close_series.diff()
@@ -110,12 +160,14 @@ if st.sidebar.button("સ્ટોકનું વિશ્લેષણ કર�
                     rr_ratio = round(reward / risk, 2) if risk > 0 else 0
 
                     # 8. Automatic Dynamic Score Calculation (Out of 100)
-                    score = 40  # Base Score
+                    score = 35  # Base Score
                     if current_price > ema_200: score += 15
                     else: score -= 10
                     if current_price > ema_50: score += 15
                     else: score -= 10
-                    if 40 <= current_rsi <= 70: score += 15
+                    if "તેજી" in monthly_trend: score += 15
+                    else: score -= 5
+                    if 40 <= current_rsi <= 70: score += 10
                     elif current_rsi > 70: score += 5
                     else: score -= 10
                     if current_macd > current_sig: score += 10
@@ -129,30 +181,31 @@ if st.sidebar.button("સ્ટોકનું વિશ્લેષણ કર�
                     elif score >= 50:
                         verdict = "⚖️ સાઇડવેઝ / હોલ્ડ (તટસ્થ)"
                     else:
-                        verdict = "🔻 બેરિશ / વેચાણ દબાણ (વિક ૧૩/સેલ)"
+                        verdict = "🔻 બેરિશ / વેચાણ દબાણ (વિક/સેલ)"
 
-                    # Display UI Metrics
+                    # Display UI Metrics in Professional Cards
                     col1, col2, col3, col4 = st.columns(4)
                     col1.metric("હાલનો ભાવ", f"₹{current_price:.2f}")
-                    col2.metric("ઓટો-ટેક્નિકલ સ્કોર", f"{score} / 100")
+                    col2.metric("પ્રો ટેક્નિકલ સ્કોર", f"{score} / 100")
                     col3.metric("આરએસઆઈ (RSI 14)", f"{current_rsi:.2f}")
                     col4.metric("૫૨ સપ્તાહ હાઈ", f"₹{high_52:.2f}")
 
                     st.markdown("---")
 
                     # Scoreboard & Indicators Display
-                    st.subheader(f"🎯 ઓટો-પ્રો સિગ્નલ સ્કોરબોર્ડ: {company_name}")
+                    st.subheader(f"🎯 પ્રો-સિગ્નલ સ્કોરબોર્ડ: {company_name}")
                     st.info(f"**ઓવરઓલ ટ્રેન્ડ સિગ્નલ:** {verdict}")
 
-                    sc1, sc2, sc3 = st.columns(3)
-                    sc1.write(f"**દૈનિક ટ્રેન્ડ:** {daily_trend}")
-                    sc2.write(f"**સાપ્તાહિક ટ્રેન્ડ:** {weekly_trend}")
-                    sc3.write(f"**સુપરટ્રેન્ડ:** {supertrend_status}")
+                    sc1, sc2, sc3, sc4 = st.columns(4)
+                    sc1.write(f"**દૈનિક ટ્રેન્ડ (Daily):** {daily_trend}")
+                    sc2.write(f"**સાપ્તાહિક ટ્રેન્ડ (Weekly):** {weekly_trend}")
+                    sc3.write(f"**માસિક ટ્રેન્ડ (Monthly):** {monthly_trend}")
+                    sc4.write(f"**સુપરટ્રેન્ડ:** {supertrend_status}")
 
-                    sc4, sc5, sc6 = st.columns(3)
-                    sc4.write(f"**એમએસીડી (MACD):** {macd_status}")
-                    sc5.write(f"**વોલ્યુમ સ્થિતિ:** {volume_status}")
-                    sc6.write(f"📊 **૫૨ સપ્તાહ લો:** ₹{low_52:.2f}")
+                    sc5, sc6, sc7 = st.columns(3)
+                    sc5.write(f"**એમએસીડી (MACD):** {macd_status}")
+                    sc6.write(f"**વોલ્યુમ સ્થિતિ:** {volume_status}")
+                    sc7.write(f"📊 **૫૨ સપ્તાહ લો:** ₹{low_52:.2f}")
 
                     # Swing Trading Levels & Risk-Reward
                     st.markdown("---")
@@ -168,17 +221,18 @@ if st.sidebar.button("સ્ટોકનું વિશ્લેષણ કર�
                     # Generate Clean Professional Local Report in Gujarati
                     clean_text = f"""
 ==================================================
-📊 {company_name} ({symbol}) - પ્રોફેશનલ એનાલિસિસ રિપોર્ટ
+📊 {company_name} ({selected_stock}) - પ્રોફેશનલ એનાલિસિસ રિપોર્ટ
 ==================================================
-હાલની કિંમત: ₹{current_price:.2f} | ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
+હાલની કિંમત: ₹{current_price:.2f} | પ્રો ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
 
 ૧. કંપનીનો ટૂંકો પરિચય (કંપની પ્રોફાઇલ):
 {business_summary}
 
-૨. ટેક્નિકલ સ્કોર અને સૂચકાંકો (ટેક્નિકલ ઇન્ડિકેટર્સ):
-- ઓટો-ટેક્નિકલ સ્કોર: {score}/100 - {verdict}
-- દૈનિક ટ્રેન્ડ (50-EMA): {daily_trend}
-- સાપ્તાહિક ટ્રેન્ડ (200-EMA): {weekly_trend}
+૨. મલ્ટી-ટાઈમફ્રેમ સ્કોર અને સૂચકાંકો:
+- પ્રો ટેક્નિકલ સ્કોર: {score}/100 - {verdict}
+- દૈનિક ટ્રેન્ડ (Daily - 50 EMA): {daily_trend}
+- સાપ્તાહિક ટ્રેન્ડ (Weekly - 200 EMA): {weekly_trend}
+- માસિક ટ્રેન્ડ (Monthly - 12 EMA): {monthly_trend}
 - સુપરટ્રેન્ડ સ્થિતિ: {supertrend_status}
 - એમએસીડી ક્રોસઓવર: {macd_status}
 - વોલ્યુમ સ્થિતિ: {volume_status}
@@ -189,7 +243,7 @@ if st.sidebar.button("સ્ટોકનું વિશ્લેષણ કર�
 ૩. શોર્ટ અને મિડ-ટર્મ માર્કેટ આઉટલુક:
 - ૫૨ સપ્તાહની ઊંચાઈ (52W High): ₹{high_52:.2f}
 - ૫૨ સપ્તાહનું તળિયું (52W Low): ₹{low_52:.2f}
-- ટ્રેન્ડ વિશ્લેષણ: હાલમાં સ્ટોકનો ઓવરઓલ સ્કોર {score}/100 છે. જો ભાવ મુખ્ય મૂવિંગ એવરેજથી ઉપર ટ્રેડ થતો હોય તો તેજી જળવાઈ રહે છે, જ્યારે નીચે હોય તો વેચાણનું દબાણ જોવા મળે છે.
+- ટ્રેન્ડ વિશ્લેષણ: હાલમાં સ્ટોકનો ઓવરઓલ પ્રો સ્કોર {score}/100 છે. દૈનિક, સાપ્તાહિક અને માસિક ત્રણેય ટાઈમફ્રેમ્સના આધારે મોમેન્ટમ નક્કી કરવામાં આવ્યું છે.
 
 ૪. મહત્વના ટ્રેડિંગ સ્તરો અને વ્યૂહરચના:
 - સૂચિત સ્ટોપ-લોસ (SL): ₹{stop_loss:.2f} (-3% જોખમ)
@@ -200,15 +254,15 @@ if st.sidebar.button("સ્ટોકનું વિશ્લેષણ કર�
 ==================================================
 """
 
-                    st.success("એનાલિસિસ રિપોર્ટ સફળતાપૂર્વક તૈયાર થઈ ગયો છે!")
-                    st.subheader(f"📊 {company_name} એનાલિસિસ રિપોર્ટ:")
-                    st.write(clean_text)
+                    st.success("પ્રોફેશનલ એનાલિસિસ રિપોર્ટ સફળતાપૂર્વક તૈયાર થઈ ગયો છે!")
+                    st.subheader(f"📊 {company_name} પ્રો એનાલિસિસ રિપોર્ટ:")
+                    st.text_area("રિપોર્ટ ટેક્સ્ટ:", clean_text, height=300)
 
                     # Download Button
                     st.download_button(
-                        label="📥 આ રિપોર્ટ ડાઉનલોડ કરો (.txt)",
+                        label="📥 આ પ્રો રિપોર્ટ ડાઉનલોડ કરો (.txt)",
                         data=clean_text.encode('utf-8'),
-                        file_name=f"{symbol}_analysis_report.txt",
+                        file_name=f"{selected_stock}_pro_analysis_report.txt",
                         mime="text/plain;charset=utf-8"
                     )
 
