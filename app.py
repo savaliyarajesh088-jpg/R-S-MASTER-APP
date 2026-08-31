@@ -66,18 +66,18 @@ st.sidebar.markdown("---")
 
 # Main Navigation Tabs with Emojis
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📊 સિંગલ સ્ટોક ડીપ એનાલિસિસ", 
+    "📊 સિંગલ સ્ટોક ડીપ એનાલિસિસ & સ્વિંગ પ્લાન", 
     "🔍 લાઈવ માર્કેટ સ્કેનર & બાય/હોલ્ડ સિગ્નલ", 
     "📋 વોચલિસ્ટ કમ્પેરિઝન", 
     "💼 મારો પોર્ટફોલિયો ટ્રેકર"
 ])
 
 with tab1:
-    st.subheader("🎯 પ્રોફેશનલ ટ્રેડિંગ એનાલિસિસ (EMA, CPR, MACD & ફેક બ્રેકઆઉટ ફિલ્ટર) 📉")
+    st.subheader("🎯 પ્રોફેશનલ ટ્રેડિંગ એનાલિસિસ, કંપની માહિતી & સ્વિંગ ટાર્ગેટ 📉")
     
     selected_stock = st.selectbox("વિશ્લેષણ માટે સ્ટોક પસંદ કરો: 🔍", st.session_state.watchlist, key="analysis_box")
     
-    if st.button("🚀 પ્રોફેશનલ ટ્રેડિંગ એનાલિસિસ રન કરો"):
+    if st.button("🚀 પ્રોફેશનલ એનાલિસિસ અને સ્વિંગ પ્લાન રન કરો"):
         if not selected_stock:
             st.error("❌ મહેરબાની કરીને સ્ટોક પસંદ કરો.")
         else:
@@ -106,7 +106,8 @@ with tab1:
                         target_3yr = current_price * ((1 + annual_growth) ** 3)
                         target_5yr = current_price * ((1 + annual_growth) ** 5)
 
-                        raw_summary = info.get('longBusinessSummary', 'આ કંપની વિશેની માહિતી ઉપલબ્ધ નથી.')
+                        # COMPANY BUSINESS SUMMARY (TRANSLATED TO GUJARATI)
+                        raw_summary = info.get('longBusinessSummary', 'આ કંપની વિશેની વિગતવાર માહિતી ઉપલબ્ધ નથી.')
                         try:
                             business_summary = GoogleTranslator(source='auto', target='gu').translate(raw_summary)
                         except:
@@ -139,7 +140,7 @@ with tab1:
                         current_sig = signal_line.iloc[-1]
                         macd_status = "🟢 MACD બુલિશ મોમેન્ટમ 🚀" if current_macd > current_sig else "🔴 MACD બેરિશ મોમેન્ટમ ⚠️"
 
-                        # CPR Calculation Approximation
+                        # CPR Calculation
                         recent_h = hist['High'].iloc[-2]
                         recent_l = hist['Low'].iloc[-2]
                         recent_c = hist['Close'].iloc[-2]
@@ -173,7 +174,7 @@ with tab1:
                         is_near_support = current_price <= (dynamic_support * 1.03)
                         pullback_status = "🟢 સપોર્ટ ઝોન પર પુલબેક (Buy on Dip તક) 🎯" if is_near_support else "⚪ નોર્મલ રેન્જ ⚖️"
 
-                        # Risk-to-Reward Setup (1:3)
+                        # Risk-to-Reward Setup (1:3) for Swing Trading
                         stop_loss = dynamic_support * 0.99
                         risk = current_price - stop_loss
                         target_swing_1 = current_price + (risk * 2.0)
@@ -208,6 +209,12 @@ with tab1:
 
                         st.markdown("---")
 
+                        # Company Profile Section
+                        st.subheader(f"🏢 કંપની વિશે માહિતી (Company Profile): {company_name}")
+                        st.write(business_summary)
+
+                        st.markdown("---")
+
                         # Candlestick Chart
                         st.subheader(f"📊 {company_name} - કેન્ડલસ્ટિક ચાર્ટ વિથ સપોર્ટ & રેઝિસ્ટન્સ 📈")
                         fig = go.Figure(data=[go.Candlestick(
@@ -228,21 +235,21 @@ with tab1:
                         sc3.write(f"**📐 CPR Width:** {cpr_status}")
                         sc4.write(f"🛡️ **P/E / ROE:** {pe_ratio} / {roe_str}")
 
-                        # Trade & Growth Plan
+                        # Swing Trading Plan & Risk Management
                         st.markdown("---")
-                        st.subheader("🛡️ પ્રોફેશનલ રિસ્ક મેનેજમેન્ટ & 1:3 ટાર્ગેટ પ્લાન 🎯")
+                        st.subheader("🛡️ સ્વિંગ ટ્રેડિંગ રિસ્ક મેનેજમેન્ટ & 1:3 ટાર્ગેટ પ્લાન 🎯")
                         
                         if is_valid_setup:
-                            st.success("✅ **પરફેક્ટ બાય કે હોલ્ડ સેટઅપ મળ્યું છે!** ફેક બ્રેકઆઉટ વગરનું ક્લીન વોલ્યુમ કે સપોર્ટ પુલબેક છે:")
+                            st.success("✅ **પરફેક્ટ સ્વિંગ ટ્રેડ સેટઅપ મળ્યું છે!** ફેક બ્રેકઆઉટ વગરનું ક્લીન વોલ્યુમ કે સપોર્ટ પુલબેક છે:")
                             t_col1, t_col2, t_col3, t_col4 = st.columns(4)
                             t_col1.metric("🛑 સ્ટોપ-લોસ (SL)", f"₹{stop_loss:.2f}", "સપોર્ટની નીચે")
                             t_col2.metric("🎯 ટાર્ગેટ ૧ (1:2)", f"₹{target_swing_1:.2f}", "પ્રોફિટ બુકિંગ")
                             t_col3.metric("🚀 ટાર્ગેટ ૨ (1:3)", f"₹{target_swing_2:.2f}", "મેક્સિમમ રિવોર્ડ")
                             t_col4.metric("⚖️ રિસ્ક-ટુ-રિવોર્ડ", f"1 : {rr_ratio}")
                         else:
-                            st.warning("⚠️ **બ્લાઇન્ડ બાઇંગ વોર્નિંગ:** હાલમાં સેટઅપ ક્લિયર નથી અથવા ઓપરેટર ટ્રેપ ઝોન છે. રાહ જુઓ.")
+                            st.warning("⚠️ **બ્લાઇન્ડ બાઇંગ વોર્નિંગ:** હાલમાં સેટઅપ ક્લિયર નથી અથવા ઓપરેટર ટ્રેપ ઝોન છે. રીટેસ્ટની રાહ જુઓ.")
 
-                        st.markdown("##### **📈 ૨. ૩ થી ૫ વર્ષના લોંગ-ટર્મ ગ્રોથ લક્ષ્યાંક (CAGR બેઝ્ડ):**")
+                        st.markdown("##### **📈 લોંગ-ટર્મ ગ્રોથ લક્ષ્યાંક (CAGR બેઝ્ડ ૩ થી ૫ વર્ષ):**")
                         inv_col1, inv_col2, inv_col3 = st.columns(3)
                         inv_col1.metric("📊 અંદાજિત વાર્ષિક ગ્રોથ", f"{annual_growth*100:.1f}% પ્રતિ વર્ષ")
                         inv_col2.metric("🎯 ૩ વર્ષનું લક્ષ્ય", f"₹{target_3yr:.2f}")
@@ -277,10 +284,6 @@ with tab2:
                     vol_avg = h['Volume'].rolling(20).mean().iloc[-1]
                     is_vol_good = vol_today > (1.2 * vol_avg)
                     
-                    sup = h['Low'].tail(30).min()
-                    res = h['High'].tail(30).max()
-                    
-                    # Recommendation Logic
                     if cp > ema200 and ema9 > ema20 and is_vol_good:
                         action = "🔥 મજબૂત બાય / ગ્રોથ (Strong Buy) ✅"
                     elif cp > ema200:
@@ -301,9 +304,8 @@ with tab2:
             progress_bar.progress((i + 1) / total_stocks)
             
         if scanner_results:
-            df_scanner = pd.DataFrame(scanner_results)
-            st.dataframe(df_scanner, use_container_width=True)
-            st.success("🎉 સ્કેનર પૂરું થઈ ગયું! જે શેરોમાં 'Strong Buy' કે 'Hold' બતાવે છે તે લોંગ-ટર્મ ગ્રોથ માટે શ્રેષ્ઠ ગણાય.")
+            st.dataframe(pd.DataFrame(scanner_results), use_container_width=True)
+            st.success("🎉 સ્કેનર પૂરું થઈ ગયું!")
         else:
             st.warning("⚠️ ડેટા ફેચ કરવામાં કોઈ સમસ્યા છે.")
 
