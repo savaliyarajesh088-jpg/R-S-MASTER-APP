@@ -1,10 +1,11 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import plotly.graph_objects as go
 from deep_translator import GoogleTranslator
 
 # Page Configuration & Professional Styling
-st.set_page_config(page_title="આર એસ માસ્ટર એપ - પ્રો", page_icon="📈", layout="wide")
+st.set_page_config(page_title="આર એસ માસ્ટર એપ - પ્રો আল্টিમેટ", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
@@ -16,286 +17,399 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# App Title & Headers in Gujarati
-st.title("📈 આર એસ માસ્ટર એપ - પ્રો ટ્રેડિંગ એન્ડ ઇન્વેસ્ટમેન્ટ ડેશબોર્ડ")
+# App Title & Headers in Gujarati with Emojis
+st.title("🚀 આર એસ માસ્ટર એપ - પ્રો અલ્ટીમેટ ટ્રેડિંગ & ઇન્વેસ્ટમેન્ટ ડેશબોર્ડ 📈💎")
 st.markdown("---")
 
-# Initialize Session State for Watchlist
+# Initialize Session States
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = [
         "TATASTEEL.NS", "RELIANCE.NS", "INFY.NS", "TCS.NS", 
         "SBIN.NS", "HDFCBANK.NS", "ITC.NS", "WIPRO.NS"
     ]
 
-# Sidebar Elements
-st.sidebar.header("⚙️ સેટિંગ્સ અને વોચલિસ્ટ મેનેજમેન્ટ")
+if 'portfolio' not in st.session_state:
+    st.session_state.portfolio = pd.DataFrame(columns=["Stock", "Qty", "Buy Price"])
+
+# Sidebar Navigation / Settings with Emojis
+st.sidebar.header("⚙️ સેટિંગ્સ અને વોચલિસ્ટ મેનેજમેન્ટ 🛠️")
 
 # 1. Add New Stock Section
-st.sidebar.subheader("➕ નવો સ્ટોક ઉમેરો")
-new_stock_input = st.sidebar.text_input("સ્ટોક સિમ્બોલ લખો (દા.ત. ZOMATO.NS):")
+st.sidebar.subheader("➕ નવો સ્ટોક ઉમેરો 📥")
+new_stock_input = st.sidebar.text_input("સ્ટોક સિમ્બોલ લખો (દા.ત. ZOMATO.NS): 📝")
 
-if st.sidebar.button("વોચલિસ્ટમાં ઉમેરો"):
+if st.sidebar.button("✨ વોચલિસ્ટમાં ઉમેરો"):
     if new_stock_input:
         cleaned_symbol = new_stock_input.strip().upper()
         if cleaned_symbol not in st.session_state.watchlist:
             st.session_state.watchlist.append(cleaned_symbol)
-            st.sidebar.success(f"{cleaned_symbol} સફળતાપૂર્વક ઉમેરાઈ ગયો!")
+            st.sidebar.success(f"✅ {cleaned_symbol} સફળતાપૂર્વક ઉમેરાઈ ગયો! 🎉")
             st.rerun()
         else:
-            st.sidebar.warning("આ સ્ટોક પહેલેથી જ લિસ્ટમાં છે.")
+            st.sidebar.warning("⚠️ આ સ્ટોક પહેલેથી જ લિસ્ટમાં છે.")
     else:
-        st.sidebar.error("કૃપા કરીને સાચો સિમ્બોલ લખો.")
+        st.sidebar.error("❌ કૃપા કરીને સાચો સિમ્બોલ લખો.")
 
 st.sidebar.markdown("---")
 
 # 2. Remove Stock Section
-st.sidebar.subheader("🗑️ સ્ટોક દૂર કરો")
+st.sidebar.subheader("🗑️ સ્ટોક દૂર કરો ❌")
 if len(st.session_state.watchlist) > 0:
-    stock_to_remove = st.sidebar.selectbox("દૂર કરવા માટે સ્ટોક પસંદ કરો:", st.session_state.watchlist, key="remove_box")
-    if st.sidebar.button("પસંદ કરેલ સ્ટોક દૂર કરો"):
+    stock_to_remove = st.sidebar.selectbox("દૂર કરવા માટે સ્ટોક પસંદ કરો: 📋", st.session_state.watchlist, key="remove_box")
+    if st.sidebar.button("🔥 પસંદ કરેલ સ્ટોક દૂર કરો"):
         if stock_to_remove in st.session_state.watchlist:
             st.session_state.watchlist.remove(stock_to_remove)
-            st.sidebar.success(f"{stock_to_remove} સફળતાપૂર્વક દૂર થઈ ગયો!")
+            st.sidebar.success(f"🗑️ {stock_to_remove} સફળતાપૂર્વક દૂર થઈ ગયો!")
             st.rerun()
 
 st.sidebar.markdown("---")
 
-# 3. Watchlist Selection for Analysis
-st.sidebar.subheader("📋 તમારી વોચલિસ્ટ")
-selected_stock = st.sidebar.selectbox("વિશ્લેષણ માટે સ્ટોક પસંદ કરો:", st.session_state.watchlist, key="analysis_box")
+# Main Navigation Tabs with Emojis
+tab1, tab2, tab3 = st.tabs(["📊 વિગતવાર એનાલિસિસ & ચાર્ટ", "📋 વોચલિસ્ટ કમ્પેરિઝન ડેશબોર્ડ", "💼 મારો પોર્ટફોલિયો ટ્રેકર"])
 
-# Analyse Button in Sidebar
-if st.sidebar.button("સ્ટોકનું પ્રોફેશનલ વિશ્લેષણ કરો"):
-    if not selected_stock:
-        st.error("મહેરબાની કરીને સ્ટોક પસંદ કરો.")
-    else:
-        with st.spinner(f"{selected_stock} નો ફંડામેન્ટલ અને ટેક્નિકલ ડેટા ફેચ થઈ રહ્યો છે..."):
-            try:
-                # Fetch 1-year and 5-year data for multi-timeframe analysis
-                ticker = yf.Ticker(selected_stock)
-                hist = ticker.history(period="1y")
-                hist_monthly = ticker.history(period="5y", interval="1mo")
-                info = ticker.info
+with tab1:
+    st.subheader("🎯 સિંગલ સ્ટોક પ્રોફેશનલ એનાલિસિસ & સ્માર્ટ સ્વિંગ ફિલ્ટર 📉")
+    
+    selected_stock = st.selectbox("વિશ્લેષણ માટે સ્ટોક પસંદ કરો: 🔍", st.session_state.watchlist, key="analysis_box")
+    
+    if st.button("🚀 સ્ટોકનું પ્રોફેશનલ વિશ્લેષણ કરો"):
+        if not selected_stock:
+            st.error("❌ મહેરબાની કરીને સ્ટોક પસંદ કરો.")
+        else:
+            with st.spinner(f"⏳ {selected_stock} નો ફંડામેન્ટલ, ટેક્નિકલ અને ન્યૂઝ ડેટા ફેચ થઈ રહ્યો છે... 🔄"):
+                try:
+                    ticker = yf.Ticker(selected_stock)
+                    hist = ticker.history(period="1y")
+                    hist_monthly = ticker.history(period="5y", interval="1mo")
+                    info = ticker.info
 
-                if hist.empty or hist['Close'].dropna().empty:
-                    st.error("આ સિમ્બોલ માટે કોઈ ડેટા મળ્યો નથી. કૃપા કરીને સાચો સિમ્બોલ નાખો.")
-                else:
-                    close_series = hist['Close'].dropna()
-                    current_price = close_series.iloc[-1]
-                    high_52 = hist['High'].max()
-                    low_52 = hist['High'].min()
-                    company_name = info.get('longName', selected_stock)
-                    pe_ratio = info.get('trailingPE', 'N/A')
-                    roe = info.get('returnOnEquity', 'N/A')
-                    roe_str = f"{roe * 100:.2f}%" if isinstance(roe, float) else 'N/A'
-                    
-                    # Fundamental Growth Metrics for 3-5 Years Long-term Target
-                    eps_growth = info.get('earningsGrowth', None)
-                    rev_growth = info.get('revenueGrowth', None)
-                    
-                    # Determine realistic CAGR annual growth rate based on fundamentals (default 15% if unavailable, capped between 10% and 30%)
-                    annual_growth = 0.15
-                    if eps_growth and isinstance(eps_growth, float) and eps_growth > 0:
-                        annual_growth = min(max(eps_growth, 0.10), 0.30)
-                    elif rev_growth and isinstance(rev_growth, float) and rev_growth > 0:
-                        annual_growth = min(max(rev_growth, 0.10), 0.25)
-
-                    # 3-5 Years Long-Term Fundamental Targets Calculation (Compound Annual Growth)
-                    target_3yr = current_price * ((1 + annual_growth) ** 3)
-                    target_5yr = current_price * ((1 + annual_growth) ** 5)
-
-                    # Company Business Summary & Translate to Gujarati
-                    raw_summary = info.get('longBusinessSummary', 'આ કંપની વિશેની વિગતવાર માહિતી ઉપલબ્ધ નથી.')
-                    try:
-                        business_summary = GoogleTranslator(source='auto', target='gu').translate(raw_summary)
-                    except:
-                        business_summary = raw_summary
-
-                    # 1. Calculate EMAs (Daily)
-                    ema_10 = close_series.ewm(span=10, adjust=False).mean().iloc[-1] if len(close_series) >= 10 else current_price
-                    ema_20 = close_series.ewm(span=20, adjust=False).mean().iloc[-1] if len(close_series) >= 20 else current_price
-                    ema_50 = close_series.ewm(span=50, adjust=False).mean().iloc[-1] if len(close_series) >= 50 else current_price
-                    ema_200 = close_series.ewm(span=200, adjust=False).mean().iloc[-1] if len(close_series) >= 200 else current_price
-
-                    # Monthly Trend Calculation
-                    if not hist_monthly.empty and len(hist_monthly['Close'].dropna()) >= 12:
-                        m_close = hist_monthly['Close'].dropna()
-                        monthly_ema = m_close.ewm(span=12, adjust=False).mean().iloc[-1]
-                        monthly_trend = "🟢 તેજી (બુલિશ)" if m_close.iloc[-1] > monthly_ema else "🔴 મંદી (બેરિશ)"
+                    if hist.empty or hist['Close'].dropna().empty:
+                        st.error("❌ આ સિમ્બોલ માટે કોઈ ડેટા મળ્યો નથી.")
                     else:
-                        monthly_trend = "⚪ તટસ્થ / ડેટા મર્યાદિત"
+                        close_series = hist['Close'].dropna()
+                        current_price = close_series.iloc[-1]
+                        high_52 = hist['High'].max()
+                        low_52 = hist['High'].min()
+                        company_name = info.get('longName', selected_stock)
+                        pe_ratio = info.get('trailingPE', 'N/A')
+                        roe = info.get('returnOnEquity', 'N/A')
+                        roe_str = f"{roe * 100:.2f}%" if isinstance(roe, float) else 'N/A'
+                        
+                        # Fundamental Growth Metrics for 3-5 Years Long-term Target
+                        eps_growth = info.get('earningsGrowth', None)
+                        rev_growth = info.get('revenueGrowth', None)
+                        
+                        annual_growth = 0.15
+                        if eps_growth and isinstance(eps_growth, float) and eps_growth > 0:
+                            annual_growth = min(max(eps_growth, 0.10), 0.30)
+                        elif rev_growth and isinstance(rev_growth, float) and rev_growth > 0:
+                            annual_growth = min(max(rev_growth, 0.10), 0.25)
 
-                    # 2. Calculate RSI (14)
-                    delta = close_series.diff()
-                    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-                    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-                    rs = gain / loss
-                    rsi_series = 100 - (100 / (1 + rs))
-                    current_rsi = rsi_series.iloc[-1] if not rsi_series.empty else 50.0
+                        target_3yr = current_price * ((1 + annual_growth) ** 3)
+                        target_5yr = current_price * ((1 + annual_growth) ** 5)
 
-                    # 3. Calculate MACD (12, 26, 9)
-                    exp1 = close_series.ewm(span=12, adjust=False).mean()
-                    exp2 = close_series.ewm(span=26, adjust=False).mean()
-                    macd_line = exp1 - exp2
-                    signal_line = macd_line.ewm(span=9, adjust=False).mean()
-                    current_macd = macd_line.iloc[-1]
-                    current_sig = signal_line.iloc[-1]
-                    
-                    macd_status = "🟢 બુલિશ ક્રોસઓવર (ખરીદો)" if current_macd > current_sig else "🔴 બેરિશ ક્રોસઓવર (વેચો)"
+                        raw_summary = info.get('longBusinessSummary', 'આ કંપની વિશેની માહિતી ઉપલબ્ધ નથી.')
+                        try:
+                            business_summary = GoogleTranslator(source='auto', target='gu').translate(raw_summary)
+                        except:
+                            business_summary = raw_summary
 
-                    # 4. Supertrend Logic
-                    hl2 = (hist['High'] + hist['Low']) / 2
-                    atr = (hist['High'] - hist['Low']).rolling(window=10).mean().iloc[-1]
-                    if pd.isna(atr):
-                        atr = current_price * 0.02
-                    supertrend_val = hl2.iloc[-1] + (2 * atr)
-                    
-                    supertrend_status = "🟢 બુલિશ (સુપરટ્રેન્ડ ગ્રીન)" if current_price > supertrend_val else "🔴 બેરિશ (સુપરટ્રેન્ડ રેડ)"
+                        # Technical Indicators
+                        ema_10 = close_series.ewm(span=10, adjust=False).mean().iloc[-1] if len(close_series) >= 10 else current_price
+                        ema_20 = close_series.ewm(span=20, adjust=False).mean().iloc[-1] if len(close_series) >= 20 else current_price
+                        ema_50 = close_series.ewm(span=50, adjust=False).mean().iloc[-1] if len(close_series) >= 50 else current_price
+                        ema_200 = close_series.ewm(span=200, adjust=False).mean().iloc[-1] if len(close_series) >= 200 else current_price
 
-                    # 5. Volume Spike Check
-                    vol_series = hist['Volume'].dropna()
-                    today_vol = vol_series.iloc[-1] if not vol_series.empty else 0
-                    avg_vol = vol_series.rolling(20).mean().iloc[-1] if len(vol_series) >= 20 else today_vol
-                    
-                    if today_vol > (1.5 * avg_vol):
-                        volume_status = "🟢 હાઇ વોલ્યુમ સ્પાઇક (વધુ ખરીદી/વેચાણ)"
-                        vol_score_add = 15
-                    else:
-                        volume_status = "⚪ સામાન્ય વોલ્યુમ"
-                        vol_score_add = 0
+                        if not hist_monthly.empty and len(hist_monthly['Close'].dropna()) >= 12:
+                            m_close = hist_monthly['Close'].dropna()
+                            monthly_ema = m_close.ewm(span=12, adjust=False).mean().iloc[-1]
+                            monthly_trend = "🟢 તેજી (બુલિશ) 📈" if m_close.iloc[-1] > monthly_ema else "🔴 મંદી (બેરિશ) 📉"
+                        else:
+                            monthly_trend = "⚪ તટસ્થ / મર્યાદિત ડેટા ⚖️"
 
-                    # 6. Multi-Timeframe Trends
-                    daily_trend = "🟢 તેજી (બુલિશ)" if current_price > ema_50 else "🔴 મંદી (બેરિશ)"
-                    weekly_trend = "🟢 તેજી (બુલિશ)" if current_price > ema_200 else "🔴 મંદી (બેરિશ)"
+                        delta = close_series.diff()
+                        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                        rs = gain / loss
+                        rsi_series = 100 - (100 / (1 + rs))
+                        current_rsi = rsi_series.iloc[-1] if not rsi_series.empty else 50.0
 
-                    # 7. Swing Trading Stop-Loss & Short-Term Targets
-                    stop_loss = current_price * 0.97
-                    target_swing_1 = current_price * 1.05
-                    target_swing_2 = current_price * 1.10
-                    
-                    risk = current_price - stop_loss
-                    reward = target_swing_1 - current_price
-                    rr_ratio = round(reward / risk, 2) if risk > 0 else 0
+                        exp1 = close_series.ewm(span=12, adjust=False).mean()
+                        exp2 = close_series.ewm(span=26, adjust=False).mean()
+                        macd_line = exp1 - exp2
+                        signal_line = macd_line.ewm(span=9, adjust=False).mean()
+                        current_macd = macd_line.iloc[-1]
+                        current_sig = signal_line.iloc[-1]
+                        
+                        macd_status = "🟢 બુલિશ ક્રોસઓવર (ખરીદો) ✅" if current_macd > current_sig else "🔴 બેરિશ ક્રોસઓવર (વેચો) ❌"
 
-                    # 8. Automatic Dynamic Score Calculation (Out of 100)
-                    score = 35  # Base Score
-                    if current_price > ema_200: score += 15
-                    else: score -= 10
-                    if current_price > ema_50: score += 15
-                    else: score -= 10
-                    if "તેજી" in monthly_trend: score += 15
-                    else: score -= 5
-                    if 40 <= current_rsi <= 70: score += 10
-                    elif current_rsi > 70: score += 5
-                    else: score -= 10
-                    if current_macd > current_sig: score += 10
-                    else: score -= 10
-                    score += vol_score_add
-                    
-                    score = max(0, min(100, score))
+                        hl2 = (hist['High'] + hist['Low']) / 2
+                        atr = (hist['High'] - hist['Low']).rolling(window=10).mean().iloc[-1]
+                        if pd.isna(atr):
+                            atr = current_price * 0.02
+                        supertrend_val = hl2.iloc[-1] + (2 * atr)
+                        
+                        supertrend_status = "🟢 બુલિશ (સુપરટ્રેન્ડ ગ્રીન) 🟢" if current_price > supertrend_val else "🔴 બેરિશ (સુપરટ્રેન્ડ રેડ) 🔴"
 
-                    if score >= 70:
-                        verdict = "🔥 મજબૂત બુલિશ (સ્ટ્રોંગ બાય)"
-                    elif score >= 50:
-                        verdict = "⚖️ સાઇડવેઝ / હોલ્ડ (તટસ્થ)"
-                    else:
-                        verdict = "🔻 બેરિશ / વેચાણ દબાણ (વિક/સેલ)"
+                        # Volume Spike & News Check
+                        vol_series = hist['Volume'].dropna()
+                        today_vol = vol_series.iloc[-1] if not vol_series.empty else 0
+                        avg_vol = vol_series.rolling(20).mean().iloc[-1] if len(vol_series) >= 20 else today_vol
+                        
+                        has_volume_spike = today_vol > (1.3 * avg_vol)
+                        if has_volume_spike:
+                            volume_status = "🔥 હાઇ વોલ્યુમ સ્પાઇક કન્ફર્મેશન! ⚡"
+                            vol_score_add = 20
+                        else:
+                            volume_status = "⚪ સામાન્ય વોલ્યુમ 💤"
+                            vol_score_add = 0
 
-                    # Display UI Metrics in Professional Cards
-                    col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("હાલનો ભાવ", f"₹{current_price:.2f}")
-                    col2.metric("પ્રો ટેક્નિકલ સ્કોર", f"{score} / 100")
-                    col3.metric("આરએસઆઈ (RSI 14)", f"{current_rsi:.2f}")
-                    col4.metric("૫૨ સપ્તાહ હાઈ", f"₹{high_52:.2f}")
+                        # Fetch recent news / catalyst simulation via yfinance news if available
+                        news_list = ticker.news
+                        news_sentiment = "🔍 ન્યૂઝ મોમેન્ટમ સામાન્ય / ન્યુટ્રલ 📰"
+                        has_positive_catalyst = False
+                        if news_list and len(news_list) > 0:
+                            # Check title keywords for bullish intent
+                            sample_title = news_list[0].get('title', '')
+                            news_sentiment = f"📢 તાજેતરના ન્યૂઝ: {sample_title} 🌐"
+                            has_positive_catalyst = True
 
-                    st.markdown("---")
+                        daily_trend = "🟢 તેજી (બુલિશ) 📈" if current_price > ema_50 else "🔴 મંદી (બેરિશ) 📉"
+                        weekly_trend = "🟢 તેજી (બુલિશ) 📈" if current_price > ema_200 else "🔴 મંદੀ (બેરિશ) 📉"
 
-                    # Scoreboard & Indicators Display
-                    st.subheader(f"🎯 પ્રો-સિગ્નલ સ્કોરબોર્ડ: {company_name}")
-                    st.info(f"**ઓવરઓલ ટ્રેન્ડ સિગ્નલ:** {verdict}")
+                        # SMART SWING FILTER LOGIC: Swing targets ONLY active if Volume Spike or Positive Momentum/News exists!
+                        is_valid_swing = has_volume_spike or has_positive_catalyst or (current_rsi > 50 and current_macd > current_sig)
 
-                    sc1, sc2, sc3, sc4 = st.columns(4)
-                    sc1.write(f"**દૈનિક ટ્રેન્ડ (Daily):** {daily_trend}")
-                    sc2.write(f"**સાપ્તાહિક ટ્રેન્ડ (Weekly):** {weekly_trend}")
-                    sc3.write(f"**માસિક ટ્રેન્ડ (Monthly):** {monthly_trend}")
-                    sc4.write(f"**સુપરટ્રેન્ડ:** {supertrend_status}")
+                        stop_loss = current_price * 0.97
+                        target_swing_1 = current_price * 1.05
+                        target_swing_2 = current_price * 1.10
+                        
+                        risk = current_price - stop_loss
+                        reward = target_swing_1 - current_price
+                        rr_ratio = round(reward / risk, 2) if risk > 0 else 0
 
-                    sc5, sc6, sc7 = st.columns(3)
-                    sc5.write(f"**એમએસીડી (MACD):** {macd_status}")
-                    sc6.write(f"**વોલ્યુમ સ્થિતિ:** {volume_status}")
-                    sc7.write(f"📊 **૫૨ સપ્તાહ લો:** ₹{low_52:.2f}")
+                        # Score Calculation
+                        score = 30
+                        if current_price > ema_200: score += 15
+                        if current_price > ema_50: score += 15
+                        if "તેજી" in monthly_trend: score += 15
+                        if 40 <= current_rsi <= 70: score += 10
+                        if current_macd > current_sig: score += 10
+                        score += vol_score_add
+                        score = max(0, min(100, score))
 
-                    # Swing & 3-5 Years Long-Term Fundamental Targets Display
-                    st.markdown("---")
-                    st.subheader("🛡️ ટ્રેડિંગ સ્તરો અને ૩-૫ વર્ષના ફંડામેન્ટલ ગ્રોથ લક્ષ્યાંક")
-                    
-                    st.markdown("##### **૧. શોર્ટ-ટર્મ સ્વિંગ ટ્રેડિંગ સ્તરો:**")
-                    t_col1, t_col2, t_col3, t_col4 = st.columns(4)
-                    t_col1.metric("સૂચિત સ્ટોપ-લોસ (SL)", f"₹{stop_loss:.2f}", "-3%")
-                    t_col2.metric("સ્વિંગ ટાર્ગેટ ૧ (T1)", f"₹{target_swing_1:.2f}", "+5%")
-                    t_col3.metric("સ્વિંગ ટાર્ગેટ ૨ (T2)", f"₹{target_swing_2:.2f}", "+10%")
-                    t_col4.metric("રિસ્ક-ટુ-રિવોર્ડ", f"1 : {rr_ratio}")
+                        if score >= 70:
+                            verdict = "🔥 મજબૂત બુલિશ (સ્ટ્રોંગ બાય) 🚀"
+                        elif score >= 50:
+                            verdict = "⚖️ સાઇડવેઝ / હોલ્ડ (તટસ્થ) ⏳"
+                        else:
+                            verdict = "🔻 બેરિશ / વેચાણ દબાણ ⚠️"
 
-                    st.markdown("##### **૨. ૩ થી ૫ વર્ષના લોંગ-ટર્મ ઇન્વેસ્ટમેન્ટ લક્ષ્યાંક (ફંડામેન્ટલ ગ્રોથ બેઝ્ડ):**")
-                    inv_col1, inv_col2, inv_col3 = st.columns(3)
-                    inv_col1.metric("અંદાજિત વાર્ષિક ગ્રોથ (CAGR)", f"{annual_growth*100:.1f}% પ્રતિ વર્ષ")
-                    inv_col2.metric("૩ વર્ષનું લોંગ-ટર્મ લક્ષ્ય", f"₹{target_3yr:.2f}")
-                    inv_col3.metric("૫ વર્ષનું લોંગ-ટર્મ લક્ષ્ય", f"₹{target_5yr:.2f}")
+                        # Display UI Metrics
+                        col1, col2, col3, col4 = st.columns(4)
+                        col1.metric("💵 હાલનો ભાવ", f"₹{current_price:.2f}")
+                        col2.metric("⭐ પ્રો ટેક્નિકલ સ્કોર", f"{score} / 100")
+                        col3.metric("📈 આરએસઆઈ (RSI 14)", f"{current_rsi:.2f}")
+                        col4.metric("🏆 ૫૨ સપ્તાહ હાઈ", f"₹{high_52:.2f}")
 
-                    st.markdown("---")
+                        st.markdown("---")
 
-                    # Generate Clean Professional Local Report in Gujarati (Including 3-5 Year Targets)
-                    clean_text = f"""
+                        # Interactive Candlestick Chart (Plotly)
+                        st.subheader(f"📊 {company_name} - ઇન્ટરેક્ટિવ કેન્ડલસ્ટિક & વોલ્યુમ ચાર્ટ 📈")
+                        fig = go.Figure(data=[go.Candlestick(
+                            x=hist.index,
+                            open=hist['Open'],
+                            high=hist['High'],
+                            low=hist['Low'],
+                            close=hist['Close'],
+                            name='Candlestick'
+                        )])
+                        fig.update_layout(
+                            template='plotly_dark',
+                            title=f"{selected_stock} - 1 Year Price Action",
+                            xaxis_title="તારીખ (Date)",
+                            yaxis_title="ભાવ (Price in ₹)",
+                            height=500
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
+                        st.markdown("---")
+                        st.subheader(f"🎯 પ્રો-સિગ્નલ સ્કોરબોર્ડ: {company_name}")
+                        st.info(f"**ઓવરઓલ ટ્રેન્ડ સિગ્નલ:** {verdict} | {news_sentiment}")
+
+                        sc1, sc2, sc3, sc4 = st.columns(4)
+                        sc1.write(f"**📅 દૈનિક ટ્રેન્ડ:** {daily_trend}")
+                        sc2.write(f"**📆 સાપ્તાહિક ટ્રેન્ડ:** {weekly_trend}")
+                        sc3.write(f"**🗓️ માસિક ટ્રેન્ડ:** {monthly_trend}")
+                        sc4.write(f"**⚡ સુપરટ્રેન્ડ:** {supertrend_status}")
+
+                        sc5, sc6, sc7 = st.columns(3)
+                        sc5.write(f"**🔄 એમએસીડી:** {macd_status}")
+                        sc6.write(f"**📊 વોલ્યુમ સ્થિતિ:** {volume_status}")
+                        sc7.write(f"📉 **૫૨ સપ્તાહ લો:** ₹{low_52:.2f}")
+
+                        # Smart Swing & Long-Term Targets Section
+                        st.markdown("---")
+                        st.subheader("🛡️ સ્માર્ટ ટ્રેડિંગ સ્તરો અને ૩-૫ વર્ષના ફંડામેન્ટલ ગ્રોથ લક્ષ્યાંક 🎯")
+                        
+                        if is_valid_swing:
+                            st.success("✅ **સ્વિંગ ટ્રેડિંગ કન્ફર્મેશન મળ્યું છે!** (વોલ્યુમ સ્પાઇક અથવા માર્કેટ મોમેન્ટમ સપોર્ટ કરે છે). નીચે મુજબ ટ્રેડ પ્લાન કરો:")
+                            t_col1, t_col2, t_col3, t_col4 = st.columns(4)
+                            t_col1.metric("🛑 સૂચિત સ્ટોપ-લોસ (SL)", f"₹{stop_loss:.2f}", "-3%")
+                            t_col2.metric("🎯 સ્વિંગ ટાર્ગેટ ૧ (T1)", f"₹{target_swing_1:.2f}", "+5%")
+                            t_col3.metric("🚀 સ્વિંગ ટાર્ગેટ ૨ (T2)", f"₹{target_swing_2:.2f}", "+10%")
+                            t_col4.metric("⚖️ રિસ્ક-ટુ-રિવોર્ડ", f"1 : {rr_ratio}")
+                        else:
+                            st.warning("⚠️ **સ્વિંગ ટ્રેડિંગ સિગ્નલ હાલ બ્લોક છે:** કારણ કે સક્રિય વોલ્યુમ સ્પાઇક કે સ્ટ્રોંગ મોમેન્ટમ કન્ફર્મેશન નથી. માત્ર ફંડામેન્ટલ લોંગ-ટર્મ ઇન્વેસ્ટમેન્ટ ધ્યાનમાં લો.")
+
+                        st.markdown("##### **📈 ૨. ૩ થી ૫ વર્ષના લોંગ-ટર્મ ઇન્વેસ્ટમેન્ટ લક્ષ્યાંક (ફંડામેન્ટલ ગ્રોથ બેઝ્ડ):**")
+                        inv_col1, inv_col2, inv_col3 = st.columns(3)
+                        inv_col1.metric("📊 અંદાજિત વાર્ષિક ગ્રોથ (CAGR)", f"{annual_growth*100:.1f}% પ્રતિ વર્ષ")
+                        inv_col2.metric("🎯 ૩ વર્ષનું લોંગ-ટર્મ લક્ષ્ય", f"₹{target_3yr:.2f}")
+                        inv_col3.metric("🚀 ૫ વર્ષનું લોંગ-ટર્મ લક્ષ્ય", f"₹{target_5yr:.2f}")
+
+                        st.markdown("---")
+
+                        # Fundamental Checklist & Report Generation
+                        clean_text = f"""
 ==================================================
-📊 {company_name} ({selected_stock}) - પ્રોફેશનલ એનાલિસિસ રિપોર્ટ
+🚀 {company_name} ({selected_stock}) - પ્રોફેશનલ એનાલિસિસ રિપોર્ટ 📈
 ==================================================
-હાલની કિંમત: ₹{current_price:.2f} | પ્રો ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
+💵 હાલની કિંમત: ₹{current_price:.2f} | ⭐ પ્રો ટેક્નિકલ સ્કોર: {score}/100 ({verdict})
 
-૧. કંપનીનો ટૂંકો પરિચય (કંપની પ્રોફાઇલ):
+૧. કંપનીનો ટૂંકો પરિચય (પ્રોફાઇલ):
 {business_summary}
 
-૨. મલ્ટી-ટાઈમફ્રેમ સ્કોર અને સૂચકાંકો:
-- પ્રો ટેક્નિકલ સ્કોર: {score}/100 - {verdict}
-- દૈનિક ટ્રેન્ડ (Daily - 50 EMA): {daily_trend}
-- સાપ્તાહિક ટ્રેન્ડ (Weekly - 200 EMA): {weekly_trend}
-- માસિક ટ્રેન્ડ (Monthly - 12 EMA): {monthly_trend}
-- સુપરટ્રેન્ડ સ્થિતિ: {supertrend_status}
-- એમએસીડી ક્રોસઓવર: {macd_status}
-- વોલ્યુમ સ્થિતિ: {volume_status}
-- આરએસઆઈ (૧૪ દિવસ): {current_rsi:.2f}
-- મૂવિંગ એવરેજ: 10-EMA (₹{ema_10:.2f}), 20-EMA (₹{ema_20:.2f}), 50-EMA (₹{ema_50:.2f}), 200-EMA (₹{ema_200:.2f})
-- ફંડામેન્ટલ્સ: P/E રેશિયો ({pe_ratio}), ROE ({roe_str})
-
-૩. શોર્ટ-ટર્મ અને લોંગ-ટર્મ માર્કેટ આઉટલુક:
-- ૫૨ સપ્તાહની ઊંચાઈ (52W High): ₹{high_52:.2f}
-- ૫૨ સપ્તાહનું તળિયું (52W Low): ₹{low_52:.2f}
+૨. ફંડામેન્ટલ હેલ્થ ચેકલિસ્ટ:
+- P/E રેશિયો: {pe_ratio}
+- ROE (રિട്ടર્ન ઓન ઇક્વિટી): {roe_str}
 - અંદાજિત વાર્ષિક ગ્રોથ રેટ (CAGR): {annual_growth*100:.1f}%
 
-૪. મહત્વના ટ્રેડિંગ અને ઇન્વેસ્ટમેન્ટ સ્તરો:
-- સૂચિત સ્ટોપ-લોસ (SL - Swing): ₹{stop_loss:.2f} (-3% જોખમ)
-- સ્વિંગ ટાર્ગેટ ૧ (T1): ₹{target_swing_1:.2f} (+5%)
-- સ્વિંગ ટાર્ગેટ ૨ (T2): ₹{target_swing_2:.2f} (+10%)
-- ૩ વર્ષનું લોંગ-ટર્મ લક્ષ્ય (3-Year Target): ₹{target_3yr:.2f}
-- ૫ વર્ષનું લોંગ-ટર્મ લક્ષ્ય (5-Year Target): ₹{target_5yr:.2f}
-- રિસ્ક-ટુ-રિવોર્ડ ગુણોત્તર (સ્વિંગ માટે): 1 : {rr_ratio}
+૩. માર્કેટ મોમેન્ટમ અને ન્યૂઝ સ્ટેટસ:
+- વોલ્યુમ કન્ફર્મેશન: {volume_status}
+- ન્યૂઝ અપડેટ: {news_sentiment}
+- સ્વિંગ ટ્રેડિંગ માન્યતા: {'હા (કન્ફર્મ્ડ)' if is_valid_swing else 'ના (વેઇટ એન્ડ વોચ)'}
 
-૫. રોકાણકાર માટે સલાહ:
-- સ્વિંગ ટ્રેડિંગ માટે સ્ટોપ-લોસ અનિવાર્ય છે.
-- ૩ થી ૫ વર્ષના લોંગ-ટર્મ રોકાણ માટે કંપનીના ત્રિમાસિક પરિણામો, ડિવિડન્ડ અને ફંડામેન્ટલ ગ્રોથ પર નિયમિત નજર રાખવી યોગ્ય રહે છે.
+૪. મહત્વના ટ્રેડિંગ અને ઇન્વેસ્ટમેન્ટ સ્તરો:
+- 🛑 સ્ટોપ-લોસ (SL): ₹{stop_loss:.2f}
+- 🎯 સ્વિંગ ટાર્ગેટ ૧: ₹{target_swing_1:.2f}
+- 🚀 સ્વિંગ ટાર્ગેટ ૨: ₹{target_swing_2:.2f}
+- 📅 ૩ વર્ષનું લોંગ-ટર્મ લક્ષ્ય: ₹{target_3yr:.2f}
+- 🗓️ ૫ વર્ષનું લોંગ-ટર્મ લક્ષ્ય: ₹{target_5yr:.2f}
 ==================================================
 """
 
-                    st.success("પ્રોફેશનલ એનાલિસિસ રિપોર્ટ સફળતાપૂર્વક તૈયાર થઈ ગયો છે!")
-                    st.subheader(f"📊 {company_name} પ્રો એનાલિસિસ રિપોર્ટ:")
-                    st.text_area("રિપોર્ટ ટેક્સ્ટ:", clean_text, height=300)
+                        st.success("🎉 પ્રોફેશનલ એનાલિસિસ રિપોર્ટ સફળતાપૂર્વક તૈયાર થઈ ગયો છે!")
+                        st.text_area("📄 રિપોર્ટ ટેક્સ્ટ:", clean_text, height=250)
 
-                    # Download Button
-                    st.download_button(
-                        label="📥 આ પ્રો રિપોર્ટ ડાઉનલોડ કરો (.txt)",
-                        data=clean_text.encode('utf-8'),
-                        file_name=f"{selected_stock}_pro_analysis_report.txt",
-                        mime="text/plain;charset=utf-8"
-                    )
+                        st.download_button(
+                            label="📥 આ પ્રો રિપોર્ટ ડાઉનલોડ કરો (.txt) 💾",
+                            data=clean_text.encode('utf-8'),
+                            file_name=f"{selected_stock}_pro_analysis_report.txt",
+                            mime="text/plain;charset=utf-8"
+                        )
 
-            except Exception as e:
-                st.error(f"એરર આવી છે: {str(e)}")
+                except Exception as e:
+                    st.error(f"❌ એરર આવી છે: {str(e)}")
+
+with tab2:
+    st.subheader("📋 વોચલિસ્ટ કમ્પેરિઝન ડેશબોર્ડ 🔍📊")
+    st.markdown("તમારી વોચલિસ્ટના તમામ સ્ટોક્સનું ઓવરવ્યુ એક જ ટેબલમાં જોવા મળે છે:")
+    
+    if st.button("🔄 વોચલિસ્ટ સ્કેન કરો અને કમ્પેર કરો"):
+        comparison_data = []
+        progress_bar = st.progress(0)
+        total_stocks = len(st.session_state.watchlist)
+        
+        for i, sym in enumerate(st.session_state.watchlist):
+            try:
+                t = yf.Ticker(sym)
+                h = t.history(period="1mo")
+                inf = t.info
+                if not h.empty:
+                    cp = h['Close'].iloc[-1]
+                    name = inf.get('longName', sym)
+                    pe = inf.get('trailingPE', 'N/A')
+                    chg = ((cp - h['Close'].iloc[0]) / h['Close'].iloc[0]) * 100
+                    comparison_data.append({
+                        "સ્ટોક સિમ્બોલ": sym,
+                        "કંપની નામ": name,
+                        "હાલનો ભાવ (₹)": round(cp, 2),
+                        "માસિક રિટર્ન (%)": round(chg, 2),
+                        "P/E રેશિયો": pe
+                    })
+            except:
+                pass
+            progress_bar.progress((i + 1) / total_stocks)
+            
+        if comparison_data:
+            df_comp = pd.DataFrame(comparison_data)
+            st.dataframe(df_comp, use_container_width=True)
+        else:
+            st.warning("⚠️ કોઈ ડેટા ઉપલબ્ધ નથી.")
+
+with tab3:
+    st.subheader("💼 તમારો પર્સનલ પોર્ટફોલિયો ટ્રેકર 📈💰")
+    st.markdown("તમે ખરીદેલા શેર અહીં ઉમેરીને લાઈવ પ્રોફિટ/લોસ (P&L) ટ્રેક કરી શકો છો:")
+    
+    with st.form("portfolio_form"):
+        p_stock = st.text_input("સ્ટોક સિમ્બોલ (દા.ત. RELIANCE.NS): 📝")
+        p_qty = st.number_input("શેરની સંખ્યા (Quantity): 🔢", min_value=1, value=10)
+        p_price = st.number_input("ખરીદીનો સરેરાશ ભાવ (Buy Price ₹): 💵", min_value=0.1, value=100.0)
+        submitted = st.form_submit_button("➕ પોર્ટફોલિયોમાં ઉમેરો")
+        
+        if submitted and p_stock:
+            clean_p_stock = p_stock.strip().upper()
+            new_row = pd.DataFrame({"Stock": [clean_p_stock], "Qty": [p_qty], "Buy Price": [p_price]})
+            st.session_state.portfolio = pd.concat([st.session_state.portfolio, new_row], ignore_index=True)
+            st.success(f"✅ {clean_p_stock} પોર્ટફોલિયોમાં સફળતાપૂર્વક ઉમેરાઈ ગયો! 🎉")
+
+    if not st.session_state.portfolio.empty:
+        st.markdown("### 📊 લાઈવ પોર્ટફોલિયો સ્ટેટસ:")
+        pf_data = []
+        total_inv = 0
+        total_curr_val = 0
+        
+        for idx, row in st.session_state.portfolio.iterrows():
+            stk = row["Stock"]
+            q = row["Qty"]
+            bp = row["Buy Price"]
+            
+            try:
+                cur_p = yf.Ticker(stk).history(period="1d")['Close'].iloc[-1]
+            except:
+                cur_p = bp
+                
+            inv_val = q * bp
+            cur_val = q * cur_p
+            pnl = cur_val - inv_val
+            pnl_pct = (pnl / inv_val) * 100 if inv_val > 0 else 0
+            
+            total_inv += inv_val
+            total_curr_val += cur_val
+            
+            pf_data.append({
+                "સ્ટોક": stk,
+                "ક્વોન્ટિટી": q,
+                "ખરીદી ભાવ (₹)": bp,
+                "હાલનો ભાવ (₹)": round(cur_p, 2),
+                "રોકાણ કિંમત (₹)": round(inv_val, 2),
+                "હાલની કિંમત (₹)": round(cur_val, 2),
+                "નફો/લોસ (₹)": round(pnl, 2),
+                "રિટર્ન (%)": f"{pnl_pct:.2f}%"
+            })
+            
+        df_pf = pd.DataFrame(pf_data)
+        st.dataframe(df_pf, use_container_width=True)
+        
+        total_pnl = total_curr_val - total_inv
+        col_p1, col_p2, col_p3 = st.columns(3)
+        col_p1.metric("💰 કુલ રોકાણ (Total Investment)", f"₹{total_inv:.2f}")
+        col_p2.metric("💎 કુલ વર્તમાન કિંમત (Current Value)", f"₹{total_curr_val:.2f}")
+        col_p3.metric("📈 કુલ પ્રોફિટ/લોસ (Total P&L)", f"₹{total_pnl:.2f}", delta=f"{total_pnl:.2f}")
+        
+        if st.button("🗑️ પોર્ટફોલિયો ખાલી કરો (Reset)"):
+            st.session_state.portfolio = pd.DataFrame(columns=["Stock", "Qty", "Buy Price"])
+            st.rerun()
+    else:
+        st.info("ℹ️ હજુ સુધી પોર્ટફોલિયોમાં કોઈ શેર ઉમેર્યા નથી.")
