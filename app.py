@@ -21,11 +21,11 @@ st.markdown("""
 st.title("🚀 આર એસ માસ્ટર એપ - પ્રો અલ્ટીમેટ ટ્રેડિંગ & ગ્રોથ ડેશબોર્ડ 📈💎")
 st.markdown("---")
 
-# Initialize Session States
+# Initialize Session States (Only once so refresh doesn't overwrite user additions/deletions)
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = [
-        "TATASTEEL.NS", "RELIANCE.NS", "INFY.NS", "TCS.NS", 
-        "SBIN.NS", "HDFCBANK.NS", "ITC.NS", "WIPRO.NS", "ZOMATO.NS", "TATAMOTORS.NS"
+        "DYCL.NS", "TATASTEEL.NS", "RELIANCE.NS", "INFY.NS", "TCS.NS", 
+        "SBIN.NS", "HDFCBANK.NS", "ITC.NS", "ZOMATO.NS", "TATAMOTORS.NS"
     ]
 
 if 'portfolio' not in st.session_state:
@@ -36,7 +36,7 @@ st.sidebar.header("⚙️ સેટિંગ્સ અને વોચલિસ�
 
 # 1. Add New Stock Section
 st.sidebar.subheader("➕ નવો સ્ટોક ઉમેરો 📥")
-new_stock_input = st.sidebar.text_input("સ્ટોક સિમ્બોલ લખો (દા.ત. ZOMATO.NS): 📝")
+new_stock_input = st.sidebar.text_input("સ્ટોક સિમ્બોલ લખો (દા.ત. DYCL.NS): 📝", key="new_stock_txt")
 
 if st.sidebar.button("✨ વોચલિસ્ટમાં ઉમેરો"):
     if new_stock_input:
@@ -73,11 +73,11 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 with tab1:
-    st.subheader("🎯 પ્રોફેશનલ ટ્રેડિંગ એનાલિસિસ, કંપની માહિતી & સ્વિંગ ટાર્ગેટ 📉")
+    st.subheader("🎯 પ્રોફેશનલ ટ્રેડિંગ એનાલિસિસ, ડ્યુઅલ સપોર્ટ (સ્વિંગ & મેજર) & ટાર્ગેટ 📉")
     
     selected_stock = st.selectbox("વિશ્લેષણ માટે સ્ટોક પસંદ કરો: 🔍", st.session_state.watchlist, key="analysis_box")
     
-    if st.button("🚀 પ્રોફેશનલ એનાલિસિસ અને સ્વિંગ પ્લાન રન કરો"):
+    if st.button("🚀 પ્રોફેશનલ એનાલિસિસ અને સપોર્ટ પ્લાન રન કરો"):
         if not selected_stock:
             st.error("❌ મહેરબાની કરીને સ્ટોક પસંદ કરો.")
         else:
@@ -148,7 +148,7 @@ with tab1:
                         bc = (recent_h + recent_l) / 2
                         tc = (2 * pivot) - bc
                         cpr_width = abs(tc - bc)
-                        cpr_status = "좁ું / સાંકડું CPR (મોટા બ્રેકઆઉટની શક્યતા) ⚡" if cpr_width < (current_price * 0.005) else "પહોળું CPR (સાઇડવેઝ માર્કેટ) ⚖️"
+                        cpr_status = "સાંકડું CPR (મોટા બ્રેકઆઉટની શક્યતા) ⚡" if cpr_width < (current_price * 0.005) else "પહોળું CPR (સાઇડવેઝ માર્કેટ) ⚖️"
 
                         # Volume & Fake Breakout Trap Check
                         vol_series = hist['Volume'].dropna()
@@ -156,26 +156,30 @@ with tab1:
                         avg_vol = vol_series.rolling(20).mean().iloc[-1] if len(vol_series) >= 20 else today_vol
                         has_volume_spike = today_vol > (1.3 * avg_vol)
                         
+                        # Resistance (Last 60 sessions)
                         recent_hist = hist.tail(60)
                         dynamic_resistance = recent_hist['High'].max()
-                        dynamic_support = recent_hist['Low'].min()
+
+                        # --- DUAL SUPPORT LOGIC (SWING vs MAJOR) ---
+                        swing_hist = hist.tail(15)
+                        swing_support = swing_hist['Low'].min()
+                        major_support = hist['Low'].min()
 
                         is_near_resistance = current_price >= (dynamic_resistance * 0.98)
                         is_fake_breakout = is_near_resistance and not has_volume_spike
                         
                         if is_fake_breakout:
-                            trap_status = "⚠️ ચેતવણી: ફેક બ્રેકઆઉટ / ઓપરેટર ટ્રેપ (બ્લાઇન્ડ સ્પોટ)! 🛑"
+                            trap_status = "⚠️ ચેતવણી: ફેક બ્રેકઆઉટ / ઓપરેટર ટ્રેપ! 🛑"
                         elif has_volume_spike:
                             trap_status = "🔥 જેન્યુઈન વોલ્યુમ બ્રેકઆઉટ કન્ફર્મેશન! ✅"
                         else:
                             trap_status = "⚪ સામાન્ય પ્રાઇસ એક્શન ઝોન 💤"
 
-                        # Pullback / Buy on Dip Check
-                        is_near_support = current_price <= (dynamic_support * 1.03)
-                        pullback_status = "🟢 સપોર્ટ ઝોન પર પુલબેક (Buy on Dip તક) 🎯" if is_near_support else "⚪ નોર્મલ રેન્જ ⚖️"
+                        is_near_support = current_price <= (swing_support * 1.03)
+                        pullback_status = "🟢 સ્વિંગ સપોર્ટ ઝોન પર પુલબેક (Buy on Dip તક) 🎯" if is_near_support else "⚪ નોર્મલ રેન્જ ⚖️"
 
-                        # Risk-to-Reward Setup (1:3) for Swing Trading
-                        stop_loss = dynamic_support * 0.99
+                        # Risk-to-Reward Setup (1:3) using Swing Support
+                        stop_loss = swing_support * 0.99
                         risk = current_price - stop_loss
                         target_swing_1 = current_price + (risk * 2.0)
                         target_swing_2 = current_price + (risk * 3.0)
@@ -215,18 +219,20 @@ with tab1:
 
                         st.markdown("---")
 
-                        # Candlestick Chart
-                        st.subheader(f"📊 {company_name} - કેન્ડલસ્ટિક ચાર્ટ વિથ સપોર્ટ & રેઝિસ્ટન્સ 📈")
+                        # Candlestick Chart with Both Supports
+                        st.subheader(f"📊 {company_name} - કેન્ડલસ્ટિક ચાર્ટ વિથ ડ્યુઅલ સપોર્ટ & રેઝિસ્ટન્સ 📈")
                         fig = go.Figure(data=[go.Candlestick(
                             x=hist.index, open=hist['Open'], high=hist['High'], low=hist['Low'], close=hist['Close'], name='Candlestick'
                         )])
                         fig.add_hline(y=dynamic_resistance, line_dash="dash", line_color="red", annotation_text=f"🔴 રેઝિસ્ટન્સ: ₹{dynamic_resistance:.2f}", annotation_position="top right")
-                        fig.add_hline(y=dynamic_support, line_dash="dash", line_color="green", annotation_text=f"🟢 સપોર્ટ: ₹{dynamic_support:.2f}", annotation_position="bottom right")
-                        fig.update_layout(template='plotly_dark', title=f"{selected_stock} - Price Action & Trap Filter", xaxis_title="તારીખ", yaxis_title="ભાવ (₹)", height=500)
+                        fig.add_hline(y=swing_support, line_dash="dash", line_color="orange", annotation_text=f"🟠 સ્વિંગ સપોર્ટ (ટ્રેડિંગ): ₹{swing_support:.2f}", annotation_position="bottom right")
+                        fig.add_hline(y=major_support, line_dash="dash", line_color="green", annotation_text=f"🟢 મેજર બેઝ સપોર્ટ (ઇન્વેસ્ટમેન્ટ): ₹{major_support:.2f}", annotation_position="bottom left")
+                        
+                        fig.update_layout(template='plotly_dark', title=f"{selected_stock} - Dual Support & Price Action", xaxis_title="તારીખ", yaxis_title="ભાવ (₹)", height=500)
                         st.plotly_chart(fig, use_container_width=True)
 
                         st.markdown("---")
-                        st.subheader(f"🎯 પ્રોફેશનલ ટ્રેડર ઇન્ડિકેટર & ગ્રોથ સ્ટેટસ: {company_name}")
+                        st.subheader(f"🎯 પ્રોફેશનલ ટ્રેડર ઇન્ડિકેટર & સપોર્ટ સ્ટેટસ: {company_name}")
                         st.info(f"**ઓવરઓલ સિગ્નલ:** {verdict} | **ટ્રેપ ચેક:** {trap_status} | **પુલબેક:** {pullback_status}")
 
                         sc1, sc2, sc3, sc4 = st.columns(4)
@@ -235,19 +241,26 @@ with tab1:
                         sc3.write(f"**📐 CPR Width:** {cpr_status}")
                         sc4.write(f"🛡️ **P/E / ROE:** {pe_ratio} / {roe_str}")
 
+                        # Dual Support Info Box
+                        st.markdown("---")
+                        st.subheader("📌 સપોર્ટ લેવલ માર્ગદર્શિકા (Swing vs Major Support)")
+                        sup_c1, sup_c2 = st.columns(2)
+                        sup_c1.metric("🟠 સ્વિંગ ટ્રેડ સપોર્ટ (નજીકનો Stop-Loss)", f"₹{swing_support:.2f}", "શોર્ટ-ટર્મ ટ્રેડિંગ માટે")
+                        sup_c2.metric("🟢 મેજર બેઝ સપોર્ટ (લોંગ-ટર્મ Base)", f"₹{major_support:.2f}", "લાંબા ગાળાના રોકાણ માટે")
+
                         # Swing Trading Plan & Risk Management
                         st.markdown("---")
                         st.subheader("🛡️ સ્વિંગ ટ્રેડિંગ રિસ્ક મેનેજમેન્ટ & 1:3 ટાર્ગેટ પ્લાન 🎯")
                         
                         if is_valid_setup:
-                            st.success("✅ **પરફેક્ટ સ્વિંગ ટ્રેડ સેટઅપ મળ્યું છે!** ફેક બ્રેકઆઉટ વગરનું ક્લીન વોલ્યુમ કે સપોર્ટ પુલબેક છે:")
+                            st.success("✅ **પરફેક્ટ સ્વિંગ ટ્રેડ સેટઅપ મળ્યું છે!**")
                             t_col1, t_col2, t_col3, t_col4 = st.columns(4)
-                            t_col1.metric("🛑 સ્ટોપ-લોસ (SL)", f"₹{stop_loss:.2f}", "સપોર્ટની નીચે")
+                            t_col1.metric("🛑 સ્ટોપ-લોસ (SL)", f"₹{stop_loss:.2f}", "સ્વિંગ સપોર્ટ નીચે")
                             t_col2.metric("🎯 ટાર્ગેટ ૧ (1:2)", f"₹{target_swing_1:.2f}", "પ્રોફિટ બુકિંગ")
                             t_col3.metric("🚀 ટાર્ગેટ ૨ (1:3)", f"₹{target_swing_2:.2f}", "મેક્સિમમ રિવોર્ડ")
                             t_col4.metric("⚖️ રિસ્ક-ટુ-રિવોર્ડ", f"1 : {rr_ratio}")
                         else:
-                            st.warning("⚠️ **બ્લાઇન્ડ બાઇંગ વોર્નિંગ:** હાલમાં સેટઅપ ક્લિયર નથી અથવા ઓપરેટર ટ્રેપ ઝોન છે. રીટેસ્ટની રાહ જુઓ.")
+                            st.warning("⚠️ **બ્લાઇન્ડ બાઇંગ વોર્નિંગ:** હાલમાં સેટઅપ ક્લિયર નથી અથવા ઓપરેટર ટ્રેપ ઝોન છે.")
 
                         st.markdown("##### **📈 લોંગ-ટર્મ ગ્રોથ લક્ષ્યાંક (CAGR બેઝ્ડ ૩ થી ૫ વર્ષ):**")
                         inv_col1, inv_col2, inv_col3 = st.columns(3)
@@ -260,8 +273,6 @@ with tab1:
 
 with tab2:
     st.subheader("🔍 લાઈવ માર્કેટ સ્કેનર & બાય/હોલ્ડ ગ્રોથ ફિલ્ટર 🚀")
-    st.markdown("તમારી વોચલિસ્ટના તમામ શેરોને એકસાથે સ્કેન કરીને કયા સ્ટોકમાં **બાય, હોલ્ડ કે અવોઈડ** કરવું તેની યાદી અહીં દેખાય છે:")
-    
     if st.button("⚡ લાઈવ વોચલિસ્ટ સ્કેનર રન કરો"):
         scanner_results = []
         progress_bar = st.progress(0)
@@ -336,7 +347,7 @@ with tab3:
 with tab4:
     st.subheader("💼 તમારો પર્સનલ પોર્ટફોલિયો ટ્રેકર 📈💰")
     with st.form("portfolio_form"):
-        p_stock = st.text_input("સ્ટોક સિમ્બોલ (દા.ᱛ. RELIANCE.NS): 📝")
+        p_stock = st.text_input("સ્ટોક સિમ્બોલ (દા.ત. DYCL.NS): 📝")
         p_qty = st.number_input("શેરની સંખ્યા (Quantity): 🔢", min_value=1, value=10)
         p_price = st.number_input("ખરીદીનો સરેરાશ ભાવ (Buy Price ₹): 💵", min_value=0.1, value=100.0)
         submitted = st.form_submit_button("➕ પોર્ટફોલિયોમાં ઉમેરો")
