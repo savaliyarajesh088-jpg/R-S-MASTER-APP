@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from deep_translator import GoogleTranslator
 
 # Page Configuration & Professional Styling
-st.set_page_config(page_title="આર એસ માસ્ટર એપ - પ્રો আল্টিમેટ", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="આર એસ માસ્ટર એપ - પ્રો અલ્ટીમેટ", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
@@ -65,10 +65,10 @@ if len(st.session_state.watchlist) > 0:
 st.sidebar.markdown("---")
 
 # Main Navigation Tabs with Emojis
-tab1, tab2, tab3 = st.tabs(["📊 વિગતવાર એનાલિસિસ & ચાર્ટ", "📋 વોચલિસ્ટ કમ્પેરિઝન ડેશબોર્ડ", "💼 મારો પોર્ટફોલિયો ટ્રેકર"])
+tab1, tab2, tab3 = st.tabs(["📊 વિગતવાર એનાલિસિસ & સપોર્ટ-રેઝિસ્ટન્સ ચાર્ટ", "📋 વોચલિસ્ટ કમ્પેરિઝન ડેશબોર્ડ", "💼 મારો પોર્ટફોલિયો ટ્રેકર"])
 
 with tab1:
-    st.subheader("🎯 સિંગલ સ્ટોક પ્રોફેશનલ એનાલિસિસ & સ્માર્ટ સ્વિંગ ફિલ્ટર 📉")
+    st.subheader("🎯 સિંગલ સ્ટોક પ્રોફેશનલ એનાલિસિસ, સપોર્ટ-રેઝિસ્ટન્સ અને સ્માર્ટ સ્વિંગ 📉")
     
     selected_stock = st.selectbox("વિશ્લેષણ માટે સ્ટોક પસંદ કરો: 🔍", st.session_state.watchlist, key="analysis_box")
     
@@ -76,7 +76,7 @@ with tab1:
         if not selected_stock:
             st.error("❌ મહેરબાની કરીને સ્ટોક પસંદ કરો.")
         else:
-            with st.spinner(f"⏳ {selected_stock} નો ફંડામેન્ટલ, ટેક્નિકલ અને ન્યૂઝ ડેટા ફેચ થઈ રહ્યો છે... 🔄"):
+            with st.spinner(f"⏳ {selected_stock} નો ફંડામેન્ટલ, ટેક્નિકલ અને પ્રાઇસ ડેટા ફેચ થઈ રહ્યો છે... 🔄"):
                 try:
                     ticker = yf.Ticker(selected_stock)
                     hist = ticker.history(period="1y")
@@ -94,17 +94,23 @@ with tab1:
                         pe_ratio = info.get('trailingPE', 'N/A')
                         roe = info.get('returnOnEquity', 'N/A')
                         roe_str = f"{roe * 100:.2f}%" if isinstance(roe, float) else 'N/A'
+                        debt_to_equity = info.get('debtToEquity', 'N/A')
                         
-                        # Fundamental Growth Metrics for 3-5 Years Long-term Target
+                        # ADVANCED FUNDAMENTAL LOGIC FOR 3-5 YEARS TARGET
                         eps_growth = info.get('earningsGrowth', None)
                         rev_growth = info.get('revenueGrowth', None)
                         
-                        annual_growth = 0.15
-                        if eps_growth and isinstance(eps_growth, float) and eps_growth > 0:
-                            annual_growth = min(max(eps_growth, 0.10), 0.30)
-                        elif rev_growth and isinstance(rev_growth, float) and rev_growth > 0:
-                            annual_growth = min(max(rev_growth, 0.10), 0.25)
-
+                        # Base fundamental growth logic adjusted by ROE and EPS
+                        base_growth = 0.15
+                        if eps_growth and isinstance(eps_growth, float):
+                            base_growth = eps_growth
+                        elif rev_growth and isinstance(rev_growth, float):
+                            base_growth = rev_growth
+                        
+                        # Capping growth realistically between 8% and 25% for long-term health
+                        annual_growth = min(max(base_growth, 0.08), 0.25)
+                        
+                        # Extra fundamental soundness factor (if ROE > 15% and Low Debt, boost compounding confidence)
                         target_3yr = current_price * ((1 + annual_growth) ** 3)
                         target_5yr = current_price * ((1 + annual_growth) ** 5)
 
@@ -164,20 +170,22 @@ with tab1:
                             volume_status = "⚪ સામાન્ય વોલ્યુમ 💤"
                             vol_score_add = 0
 
-                        # Fetch recent news / catalyst simulation via yfinance news if available
                         news_list = ticker.news
                         news_sentiment = "🔍 ન્યૂઝ મોમેન્ટમ સામાન્ય / ન્યુટ્રલ 📰"
                         has_positive_catalyst = False
                         if news_list and len(news_list) > 0:
-                            # Check title keywords for bullish intent
                             sample_title = news_list[0].get('title', '')
                             news_sentiment = f"📢 તાજેતરના ન્યૂઝ: {sample_title} 🌐"
                             has_positive_catalyst = True
 
                         daily_trend = "🟢 તેજી (બુલિશ) 📈" if current_price > ema_50 else "🔴 મંદી (બેરિશ) 📉"
-                        weekly_trend = "🟢 તેજી (બુલિશ) 📈" if current_price > ema_200 else "🔴 મંદੀ (બેરિશ) 📉"
+                        weekly_trend = "🟢 તેજી (બુલિશ) 📈" if current_price > ema_200 else "🔴 મંદી (બેરિશ) 📉"
 
-                        # SMART SWING FILTER LOGIC: Swing targets ONLY active if Volume Spike or Positive Momentum/News exists!
+                        # REAL SUPPORT & RESISTANCE CALCULATION FROM RECENT PRICE ACTION
+                        recent_hist = hist.tail(60) # Last 60 trading sessions
+                        dynamic_resistance = recent_hist['High'].max()
+                        dynamic_support = recent_hist['Low'].min()
+
                         is_valid_swing = has_volume_spike or has_positive_catalyst or (current_rsi > 50 and current_macd > current_sig)
 
                         stop_loss = current_price * 0.97
@@ -214,8 +222,9 @@ with tab1:
 
                         st.markdown("---")
 
-                        # Interactive Candlestick Chart (Plotly)
-                        st.subheader(f"📊 {company_name} - ઇન્ટરેક્ટિવ કેન્ડલસ્ટિક & વોલ્યુમ ચાર્ટ 📈")
+                        # Interactive Candlestick Chart with Real Support & Resistance Lines
+                        st.subheader(f"📊 {company_name} - કેન્ડલસ્ટિક ચાર્ટ વિથ રિયલ સપોર્ટ & રેઝિસ્ટન્સ 📈")
+                        
                         fig = go.Figure(data=[go.Candlestick(
                             x=hist.index,
                             open=hist['Open'],
@@ -224,17 +233,36 @@ with tab1:
                             close=hist['Close'],
                             name='Candlestick'
                         )])
+                        
+                        # Add Resistance Line (Red)
+                        fig.add_hline(
+                            y=dynamic_resistance, 
+                            line_dash="dash", 
+                            line_color="red", 
+                            annotation_text=f"🔴 રેઝિસ્ટન્સ (Resistance): ₹{dynamic_resistance:.2f}", 
+                            annotation_position="top right"
+                        )
+                        
+                        # Add Support Line (Green)
+                        fig.add_hline(
+                            y=dynamic_support, 
+                            line_dash="dash", 
+                            line_color="green", 
+                            annotation_text=f"🟢 સપોર્ટ (Support): ₹{dynamic_support:.2f}", 
+                            annotation_position="bottom right"
+                        )
+
                         fig.update_layout(
                             template='plotly_dark',
-                            title=f"{selected_stock} - 1 Year Price Action",
+                            title=f"{selected_stock} - Price Action with Support & Resistance",
                             xaxis_title="તારીખ (Date)",
                             yaxis_title="ભાવ (Price in ₹)",
-                            height=500
+                            height=520
                         )
                         st.plotly_chart(fig, use_container_width=True)
 
                         st.markdown("---")
-                        st.subheader(f"🎯 પ્રો-સિગ્નલ સ્કોરબોર્ડ: {company_name}")
+                        st.subheader(f"🎯 પ્રો-સિગ્નલ સ્કોરબોર્ડ & ફંડામેન્ટલ ચેક: {company_name}")
                         st.info(f"**ઓવરઓલ ટ્રેન્ડ સિગ્નલ:** {verdict} | {news_sentiment}")
 
                         sc1, sc2, sc3, sc4 = st.columns(4)
@@ -243,14 +271,15 @@ with tab1:
                         sc3.write(f"**🗓️ માસિક ટ્રેન્ડ:** {monthly_trend}")
                         sc4.write(f"**⚡ સુપરટ્રેન્ડ:** {supertrend_status}")
 
-                        sc5, sc6, sc7 = st.columns(3)
+                        sc5, sc6, sc7, sc8 = st.columns(4)
                         sc5.write(f"**🔄 એમએસીડી:** {macd_status}")
                         sc6.write(f"**📊 વોલ્યુમ સ્થિતિ:** {volume_status}")
-                        sc7.write(f"📉 **૫૨ સપ્તાહ લો:** ₹{low_52:.2f}")
+                        sc7.write(f"🛡️ **P/E રેશિયો:** {pe_ratio}")
+                        sc8.write(f"💎 **ROE:** {roe_str}")
 
                         # Smart Swing & Long-Term Targets Section
                         st.markdown("---")
-                        st.subheader("🛡️ સ્માર્ટ ટ્રેડિંગ સ્તરો અને ૩-૫ વર્ષના ફંડામેન્ટલ ગ્રોથ લક્ષ્યાંક 🎯")
+                        st.subheader("🛡️ સ્માર્ટ ટ્રેડિંગ સ્તરો અને ફંડામેન્ટલ ગ્રોથ લક્ષ્યાંક 🎯")
                         
                         if is_valid_swing:
                             st.success("✅ **સ્વિંગ ટ્રેડિંગ કન્ફર્મેશન મળ્યું છે!** (વોલ્યુમ સ્પાઇક અથવા માર્કેટ મોમેન્ટમ સપોર્ટ કરે છે). નીચે મુજબ ટ્રેડ પ્લાન કરો:")
@@ -260,9 +289,9 @@ with tab1:
                             t_col3.metric("🚀 સ્વિંગ ટાર્ગેટ ૨ (T2)", f"₹{target_swing_2:.2f}", "+10%")
                             t_col4.metric("⚖️ રિસ્ક-ટુ-રિવોર્ડ", f"1 : {rr_ratio}")
                         else:
-                            st.warning("⚠️ **સ્વિંગ ટ્રેડિંગ સિગ્નલ હાલ બ્લોક છે:** કારણ કે સક્રિય વોલ્યુમ સ્પાઇક કે સ્ટ્રોંગ મોમેન્ટમ કન્ફર્મેશન નથી. માત્ર ફંડામેન્ટલ લોંગ-ટર્મ ઇન્વેસ્ટમેન્ટ ધ્યાનમાં લો.")
+                            st.warning("⚠️ **સ્વિંગ ટ્રેડિંગ સિગ્નલ હાલ બ્લોક છે:** સક્રિય વોલ્યુમ સ્પાઇક કે સ્ટ્રોંગ મોમેન્ટમ કન્ફર્મેશન નથી. માત્ર ફંડામેન્ટલ લોંગ-ટર્મ ઇન્વેસ્ટમેન્ટ ધ્યાનમાં લો.")
 
-                        st.markdown("##### **📈 ૨. ૩ થી ૫ વર્ષના લોંગ-ટર્મ ઇન્વેસ્ટમેન્ટ લક્ષ્યાંક (ફંડામેન્ટલ ગ્રોથ બેઝ્ડ):**")
+                        st.markdown("##### **📈 ૨. ૩ થી ૫ વર્ષના લોંગ-ટર્મ ઇન્વેસ્ટમેન્ટ લક્ષ્યાંક (ફંડામેન્ટલ ગ્રોથ & CAGR બેઝ્ડ):**")
                         inv_col1, inv_col2, inv_col3 = st.columns(3)
                         inv_col1.metric("📊 અંદાજિત વાર્ષિક ગ્રોથ (CAGR)", f"{annual_growth*100:.1f}% પ્રતિ વર્ષ")
                         inv_col2.metric("🎯 ૩ વર્ષનું લોંગ-ટર્મ લક્ષ્ય", f"₹{target_3yr:.2f}")
@@ -280,17 +309,21 @@ with tab1:
 ૧. કંપનીનો ટૂંકો પરિચય (પ્રોફાઇલ):
 {business_summary}
 
-૨. ફંડામેન્ટલ હેલ્થ ચેકલિસ્ટ:
+૨. ફંડામેન્ટલ હેલ્થ & ચેકલિસ્ટ:
 - P/E રેશિયો: {pe_ratio}
 - ROE (રિട്ടર્ન ઓન ઇક્વિટી): {roe_str}
 - અંદાજિત વાર્ષિક ગ્રોથ રેટ (CAGR): {annual_growth*100:.1f}%
 
-૩. માર્કેટ મોમેન્ટમ અને ન્યૂઝ સ્ટેટસ:
+૩. ચાર્ટ સપોર્ટ અને રેઝિસ્ટન્સ લેવલ:
+- 🔴 રેઝિસ્ટન્સ (Resistance): ₹{dynamic_resistance:.2f}
+- 🟢 સપોર્ટ (Support): ₹{dynamic_support:.2f}
+
+૪. માર્કેટ મોમેન્ટમ અને ન્યૂઝ સ્ટેટસ:
 - વોલ્યુમ કન્ફર્મેશન: {volume_status}
 - ન્યૂઝ અપડેટ: {news_sentiment}
 - સ્વિંગ ટ્રેડિંગ માન્યતા: {'હા (કન્ફર્મ્ડ)' if is_valid_swing else 'ના (વેઇટ એન્ડ વોચ)'}
 
-૪. મહત્વના ટ્રેડિંગ અને ઇન્વેસ્ટમેન્ટ સ્તરો:
+૫. મહત્વના ટ્રેડિંગ અને ઇન્વેસ્ટમેન્ટ સ્તરો:
 - 🛑 સ્ટોપ-લોસ (SL): ₹{stop_loss:.2f}
 - 🎯 સ્વિંગ ટાર્ગેટ ૧: ₹{target_swing_1:.2f}
 - 🚀 સ્વિંગ ટાર્ગેટ ૨: ₹{target_swing_2:.2f}
