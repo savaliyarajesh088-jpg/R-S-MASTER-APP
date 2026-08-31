@@ -8,13 +8,16 @@ st.set_page_config(page_title="આર એસ માસ્ટર એપ - પ્�
 
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; }
+    .main { background-color: #0e1117; color: #ffffff; }
     .stMetric { background-color: #1f2937; padding: 15px; border-radius: 10px; border: 1px solid #374151; }
+    .stMetric label { color: #9ca3af !important; }
+    .stMetric div { color: #ffffff !important; }
+    .stTextArea textarea { color: #ffffff !important; background-color: #111827 !important; }
     </style>
 """, unsafe_allow_html=True)
 
 # App Title & Headers in Gujarati
-st.title("📈 આર એસ માસ્ટર એપ - પ્રો ટ્રેડિંગ ડેશબોર્ડ")
+st.title("📈 આર એસ માસ્ટર એપ - પ્રો ટ્રેડિંગ એન્ડ ઇન્વેસ્ટમેન્ટ ડેશબોર્ડ")
 st.markdown("---")
 
 # Initialize Session State for Watchlist
@@ -59,14 +62,14 @@ st.sidebar.markdown("---")
 
 # 3. Watchlist Selection for Analysis
 st.sidebar.subheader("📋 તમારી વોચલિસ્ટ")
-selected_stock = st.sidebar.selectbox("विश्લેષણ માટે સ્ટોક પસંદ કરો:", st.session_state.watchlist, key="analysis_box")
+selected_stock = st.sidebar.selectbox("વિશ્લેષણ માટે સ્ટોક પસંદ કરો:", st.session_state.watchlist, key="analysis_box")
 
 # Analyse Button in Sidebar
 if st.sidebar.button("સ્ટોકનું પ્રોફેશનલ વિશ્લેષણ કરો"):
     if not selected_stock:
         st.error("મહેરબાની કરીને સ્ટોક પસંદ કરો.")
     else:
-        with st.spinner(f"{selected_stock} નો ડેટા ફેચ થઈ રહ્યો છે..."):
+        with st.spinner(f"{selected_stock} નો ફંડામેન્ટલ અને ટેક્નિકલ ડેટા ફેચ થઈ રહ્યો છે..."):
             try:
                 # Fetch 1-year and 5-year data for multi-timeframe analysis
                 ticker = yf.Ticker(selected_stock)
@@ -80,12 +83,27 @@ if st.sidebar.button("સ્ટોકનું પ્રોફેશનલ વ�
                     close_series = hist['Close'].dropna()
                     current_price = close_series.iloc[-1]
                     high_52 = hist['High'].max()
-                    low_52 = hist['Low'].min()
+                    low_52 = hist['High'].min()
                     company_name = info.get('longName', selected_stock)
                     pe_ratio = info.get('trailingPE', 'N/A')
                     roe = info.get('returnOnEquity', 'N/A')
                     roe_str = f"{roe * 100:.2f}%" if isinstance(roe, float) else 'N/A'
                     
+                    # Fundamental Growth Metrics for 3-5 Years Long-term Target
+                    eps_growth = info.get('earningsGrowth', None)
+                    rev_growth = info.get('revenueGrowth', None)
+                    
+                    # Determine realistic CAGR annual growth rate based on fundamentals (default 15% if unavailable, capped between 10% and 30%)
+                    annual_growth = 0.15
+                    if eps_growth and isinstance(eps_growth, float) and eps_growth > 0:
+                        annual_growth = min(max(eps_growth, 0.10), 0.30)
+                    elif rev_growth and isinstance(rev_growth, float) and rev_growth > 0:
+                        annual_growth = min(max(rev_growth, 0.10), 0.25)
+
+                    # 3-5 Years Long-Term Fundamental Targets Calculation (Compound Annual Growth)
+                    target_3yr = current_price * ((1 + annual_growth) ** 3)
+                    target_5yr = current_price * ((1 + annual_growth) ** 5)
+
                     # Company Business Summary & Translate to Gujarati
                     raw_summary = info.get('longBusinessSummary', 'આ કંપની વિશેની વિગતવાર માહિતી ઉપલબ્ધ નથી.')
                     try:
@@ -150,13 +168,13 @@ if st.sidebar.button("સ્ટોકનું પ્રોફેશનલ વ�
                     daily_trend = "🟢 તેજી (બુલિશ)" if current_price > ema_50 else "🔴 મંદી (બેરિશ)"
                     weekly_trend = "🟢 તેજી (બુલિશ)" if current_price > ema_200 else "🔴 મંદી (બેરિશ)"
 
-                    # 7. Stop-Loss, Targets & Risk-to-Reward Ratio Calculator
+                    # 7. Swing Trading Stop-Loss & Short-Term Targets
                     stop_loss = current_price * 0.97
-                    target_1 = current_price * 1.05
-                    target_2 = current_price * 1.10
+                    target_swing_1 = current_price * 1.05
+                    target_swing_2 = current_price * 1.10
                     
                     risk = current_price - stop_loss
-                    reward = target_1 - current_price
+                    reward = target_swing_1 - current_price
                     rr_ratio = round(reward / risk, 2) if risk > 0 else 0
 
                     # 8. Automatic Dynamic Score Calculation (Out of 100)
@@ -207,18 +225,26 @@ if st.sidebar.button("સ્ટોકનું પ્રોફેશનલ વ�
                     sc6.write(f"**વોલ્યુમ સ્થિતિ:** {volume_status}")
                     sc7.write(f"📊 **૫૨ સપ્તાહ લો:** ₹{low_52:.2f}")
 
-                    # Swing Trading Levels & Risk-Reward
+                    # Swing & 3-5 Years Long-Term Fundamental Targets Display
                     st.markdown("---")
-                    st.subheader("🛡️ સ્વિંગ ટ્રેડિંગ અને રિસ્ક-ટુ-રિવોર્ડ સ્તરો")
+                    st.subheader("🛡️ ટ્રેડિંગ સ્તરો અને ૩-૫ વર્ષના ફંડામેન્ટલ ગ્રોથ લક્ષ્યાંક")
+                    
+                    st.markdown("##### **૧. શોર્ટ-ટર્મ સ્વિંગ ટ્રેડિંગ સ્તરો:**")
                     t_col1, t_col2, t_col3, t_col4 = st.columns(4)
                     t_col1.metric("સૂચિત સ્ટોપ-લોસ (SL)", f"₹{stop_loss:.2f}", "-3%")
-                    t_col2.metric("પ્રથમ ટાર્ગેટ (T1)", f"₹{target_1:.2f}", "+5%")
-                    t_col3.metric("બીજો ટાર્ગેટ (T2)", f"₹{target_2:.2f}", "+10%")
-                    t_col4.metric("રિસ્ક-ટુ-રિવોર્ડ ગુણોત્તર", f"1 : {rr_ratio}")
+                    t_col2.metric("સ્વિંગ ટાર્ગેટ ૧ (T1)", f"₹{target_swing_1:.2f}", "+5%")
+                    t_col3.metric("સ્વિંગ ટાર્ગેટ ૨ (T2)", f"₹{target_swing_2:.2f}", "+10%")
+                    t_col4.metric("રિસ્ક-ટુ-રિવોર્ડ", f"1 : {rr_ratio}")
+
+                    st.markdown("##### **૨. ૩ થી ૫ વર્ષના લોંગ-ટર્મ ઇન્વેસ્ટમેન્ટ લક્ષ્યાંક (ફંડામેન્ટલ ગ્રોથ બેઝ્ડ):**")
+                    inv_col1, inv_col2, inv_col3 = st.columns(3)
+                    inv_col1.metric("અંદાજિત વાર્ષિક ગ્રોથ (CAGR)", f"{annual_growth*100:.1f}% પ્રતિ વર્ષ")
+                    inv_col2.metric("૩ વર્ષનું લોંગ-ટર્મ લક્ષ્ય", f"₹{target_3yr:.2f}")
+                    inv_col3.metric("૫ વર્ષનું લોંગ-ટર્મ લક્ષ્ય", f"₹{target_5yr:.2f}")
 
                     st.markdown("---")
 
-                    # Generate Clean Professional Local Report in Gujarati
+                    # Generate Clean Professional Local Report in Gujarati (Including 3-5 Year Targets)
                     clean_text = f"""
 ==================================================
 📊 {company_name} ({selected_stock}) - પ્રોફેશનલ એનાલિસિસ રિપોર્ટ
@@ -240,17 +266,22 @@ if st.sidebar.button("સ્ટોકનું પ્રોફેશનલ વ�
 - મૂવિંગ એવરેજ: 10-EMA (₹{ema_10:.2f}), 20-EMA (₹{ema_20:.2f}), 50-EMA (₹{ema_50:.2f}), 200-EMA (₹{ema_200:.2f})
 - ફંડામેન્ટલ્સ: P/E રેશિયો ({pe_ratio}), ROE ({roe_str})
 
-૩. શોર્ટ અને મિડ-ટર્મ માર્કેટ આઉટલુક:
+૩. શોર્ટ-ટર્મ અને લોંગ-ટર્મ માર્કેટ આઉટલુક:
 - ૫૨ સપ્તાહની ઊંચાઈ (52W High): ₹{high_52:.2f}
 - ૫૨ સપ્તાહનું તળિયું (52W Low): ₹{low_52:.2f}
-- ટ્રેન્ડ વિશ્લેષણ: હાલમાં સ્ટોકનો ઓવરઓલ પ્રો સ્કોર {score}/100 છે. દૈનિક, સાપ્તાહિક અને માસિક ત્રણેય ટાઈમફ્રેમ્સના આધારે મોમેન્ટમ નક્કી કરવામાં આવ્યું છે.
+- અંદાજિત વાર્ષિક ગ્રોથ રેટ (CAGR): {annual_growth*100:.1f}%
 
-૪. મહત્વના ટ્રેડિંગ સ્તરો અને વ્યૂહરચના:
-- સૂચિત સ્ટોપ-લોસ (SL): ₹{stop_loss:.2f} (-3% જોખમ)
-- પ્રથમ ટાર્ગેટ (T1): ₹{target_1:.2f} (+5% નફો)
-- બીજો ટાર્ગેટ (T2): ₹{target_2:.2f} (+10% નફો)
-- રિસ્ક-ટુ-રિવોર્ડ ગુણોત્તર: 1 : {rr_ratio}
-- ટ્રેડિંગ સલાહ: સ્વિંગ ટ્રેડર્સ માટે સૂચિત સ્ટોપ-લોસ અનિવાર્ય છે. રિસ્ક-રિવોર્ડ ગુણોત્તર ધ્યાનમાં રાખીને જ પોઝિશન બનાવવી યોગ્ય રહે છે.
+૪. મહત્વના ટ્રેડિંગ અને ઇન્વેસ્ટમેન્ટ સ્તરો:
+- સૂચિત સ્ટોપ-લોસ (SL - Swing): ₹{stop_loss:.2f} (-3% જોખમ)
+- સ્વિંગ ટાર્ગેટ ૧ (T1): ₹{target_swing_1:.2f} (+5%)
+- સ્વિંગ ટાર્ગેટ ૨ (T2): ₹{target_swing_2:.2f} (+10%)
+- ૩ વર્ષનું લોંગ-ટર્મ લક્ષ્ય (3-Year Target): ₹{target_3yr:.2f}
+- ૫ વર્ષનું લોંગ-ટર્મ લક્ષ્ય (5-Year Target): ₹{target_5yr:.2f}
+- રિસ્ક-ટુ-રિવોર્ડ ગુણોત્તર (સ્વિંગ માટે): 1 : {rr_ratio}
+
+૫. રોકાણકાર માટે સલાહ:
+- સ્વિંગ ટ્રેડિંગ માટે સ્ટોપ-લોસ અનિવાર્ય છે.
+- ૩ થી ૫ વર્ષના લોંગ-ટર્મ રોકાણ માટે કંપનીના ત્રિમાસિક પરિણામો, ડિવિડન્ડ અને ફંડામેન્ટલ ગ્રોથ પર નિયમિત નજર રાખવી યોગ્ય રહે છે.
 ==================================================
 """
 
